@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { 
@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const userProfile = await getUserByFirebaseUID(userCredential.user.uid);
       setCurrentUser(userProfile);
+      setFirebaseUser(userCredential.user); 
       setIsLoading(false);
       return userProfile;
     } catch (error) {
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       const newUserProfile = await createUserProfile(newUserProfileData);
       setCurrentUser(newUserProfile);
+      setFirebaseUser(fbUser); 
       setIsLoading(false);
       return newUserProfile;
     } catch (error) {
@@ -139,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sendPasswordReset
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return React.createElement(AuthContext.Provider, { value: value }, children);
 }
 
 export function useAuth() {
