@@ -1,19 +1,33 @@
 
-export type UserRole = "student" | "porter" | "hod" | "dsa" | "admin";
+export type UserRole = "student" | "porter" | "hod" | "dsa"; // Admin role removed
 
 export interface User {
-  id: string;
+  id: string; // This will be the Firebase UID
+  firebaseUID: string; // Explicitly store Firebase UID
   email: string;
   fullName: string;
   matricNumber?: string;
   role: UserRole;
-  password?: string; // Only for mock purposes, don't store plain text passwords in real apps
+  // Password is not stored here; Firebase Auth handles it.
 }
+
+export interface SignupData {
+  fullName: string;
+  matricNumber: string;
+  email: string;
+  password: string;
+}
+
+export interface UpdatePasswordData {
+  currentPassword?: string; // May not be needed if re-authentication is handled by Firebase
+  newPassword: string;
+}
+
 
 export type ExeatStatus = "Pending" | "Hold" | "Approved" | "Rejected";
 
 export interface ExeatComment {
-  userId: string;
+  userId: string; // Firebase UID of the actor
   userName: string;
   role: UserRole;
   comment: string;
@@ -23,7 +37,7 @@ export interface ExeatComment {
 
 export interface ExeatRequest {
   id: string; // Unique Exeat ID (e.g., EX-MTU-2025-00047)
-  studentId: string;
+  studentId: string; // Firebase UID of the student
   studentName: string;
   matricNumber: string;
   purpose: string;

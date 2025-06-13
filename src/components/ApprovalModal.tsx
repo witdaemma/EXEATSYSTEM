@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
 const approvalSchema = z.object({
-  comment: z.string().min(1, { message: "Comment is required, especially for declines/rejections." }),
+  comment: z.string().min(1, { message: "Comment is required, especially for declines/rejections." }).max(300, { message: "Comment is too long (max 300 characters)."}),
 });
 
 type ApprovalFormValues = z.infer<typeof approvalSchema>;
@@ -44,21 +45,17 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
       return;
     }
     
-    // Validate form before submitting action
     const isValid = await form.trigger();
-    if (!isValid && (actionType === 'Declined' || actionType === 'Rejected')) {
-      // If declining/rejecting, comment is strictly required by schema.
-      // If approving, comment is optional - backend might handle this. For mock, we require it by schema.
-      // If we want optional comment for approve:
-      // if (!isValid && (actionType === 'Declined' || actionType === 'Rejected' || (actionType === 'Approved' && form.getValues('comment').trim() === '')))
+    if (!isValid) {
+      // If any action type, comment is required by schema.
       return;
     }
-
 
     setIsSubmitting(true);
     const values = form.getValues();
 
     try {
+      // Pass the full currentUser object which includes firebaseUID
       await updateExeatRequestStatus(exeat.id, currentUser, actionType, values.comment);
       toast({ title: "Action Successful", description: `Exeat request ${exeat.id} has been ${actionType.toLowerCase()}.` });
       onActionComplete();
@@ -75,7 +72,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
     if (actorRole === 'dsa') {
       return type === 'approve' ? 'Approve Exeat' : 'Reject Exeat';
     }
-    return type === 'approve' ? 'Approve & Forward' : 'Decline Request';
+    return type === 'approve' ? 'Forward for Approval' : 'Decline Request';
   }
   
   const approveActionType = 'Approved';
@@ -90,7 +87,8 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
           <DialogTitle className="font-headline">Review Exeat Request: {exeat.id}</DialogTitle>
           <DialogDescription>
             Student: {exeat.studentName} ({exeat.matricNumber})<br/>
-            Purpose: {exeat.purpose}
+            Purpose: {exeat.purpose} <br/>
+            Departure: {formatDate(exeat.departureDate, false)}, Return: {formatDate(exeat.returnDate, false)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -100,7 +98,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
               name="comment"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Your Comment / Reason</FormLabel>
+                  <FormLabel>Your Comment / Reason ({field.value.length}/300)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Provide remarks or reasons for your decision..." {...field} rows={4} />
                   </FormControl>
@@ -110,12 +108,12 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
             />
           </form>
         </Form>
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="gap-2 sm:justify-between pt-4">
           <Button 
-            variant="outline" 
+            variant="destructive" 
             onClick={() => handleAction(declineActionType)} 
             disabled={isSubmitting}
-            className="w-full sm:w-auto bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            className="w-full sm:w-auto"
           >
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {getActionText('decline')}
@@ -123,7 +121,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
           <Button 
             onClick={() => handleAction(approveActionType)} 
             disabled={isSubmitting}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
           >
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {getActionText('approve')}

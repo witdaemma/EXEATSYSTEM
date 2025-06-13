@@ -15,10 +15,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/core/Logo';
 import { useToast } from "@/hooks/use-toast";
+import type { SignupData } from '@/lib/types';
 
 const signupSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
-  matricNumber: z.string().min(5, { message: 'Matric number is required.' }),
+  matricNumber: z.string().min(5, { message: 'Matric number is required.' }).regex(/^(MTU\/[0-9]{2}\/[0-9]{4})$/i, { message: "Matric number must be in format MTU/YY/NNNN"}),
   email: z.string().email({ message: 'Invalid email address.' }).refine(val => val.endsWith('@mtu.edu.ng'), { message: 'Email must be an MTU email address (@mtu.edu.ng)'}),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
@@ -43,16 +44,35 @@ export default function SignupPage() {
 
   const onSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
+    const signupData: SignupData = {
+      fullName: values.fullName,
+      matricNumber: values.matricNumber,
+      email: values.email,
+      password: values.password,
+    };
     try {
-      const user = await signup(values); 
+      const user = await signup(signupData); 
       if (user) {
         toast({ title: "Signup Successful", description: "Your account has been created." });
         router.push('/student/dashboard');
       } else {
          toast({ variant: "destructive", title: "Signup Failed", description: "Could not create account." });
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Signup Error", description: (error as Error).message });
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = "This email address is already in use.";
+            break;
+          case 'auth/weak-password':
+            errorMessage = "The password is too weak.";
+            break;
+          default:
+            errorMessage = "Signup failed. Please try again.";
+        }
+      }
+      toast({ variant: "destructive", title: "Signup Error", description: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +98,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. John Doe" {...field} />
+                      <Input placeholder="e.g. Binta Bello" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -91,7 +111,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Matric Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. MTU/20/0001" {...field} />
+                      <Input placeholder="e.g. MTU/21/0001" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -104,7 +124,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="studentname@mtu.edu.ng" {...field} />
+                      <Input type="email" placeholder="yourname@mtu.edu.ng" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -141,5 +161,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    

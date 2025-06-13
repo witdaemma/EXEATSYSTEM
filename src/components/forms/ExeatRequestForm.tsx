@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -21,11 +22,13 @@ import { CalendarIcon, UploadCloud, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 const exeatRequestSchema = z.object({
-  purpose: z.string().min(5, { message: "Purpose must be at least 5 characters." }),
+  purpose: z.string().min(5, { message: "Purpose must be at least 5 characters." }).max(200, {message: "Purpose is too long (max 200 chars)."}),
   departureDate: z.date({ required_error: "Departure date is required." }),
   returnDate: z.date({ required_error: "Return date is required." }),
-  contactInfo: z.string().min(10, { message: "Contact information must be at least 10 characters." }),
-  consentDocument: z.custom<FileList>().refine(files => files && files.length > 0, "Parent/Guardian consent is required."),
+  contactInfo: z.string().min(10, { message: "Contact information must be at least 10 characters." }).max(150, {message: "Contact info is too long (max 150 chars)."}),
+  consentDocument: z.custom<FileList>().refine(files => files && files.length > 0, "Parent/Guardian consent is required.")
+                                     .refine(files => files && files[0]?.size <= 5 * 1024 * 1024, "File size should be less than 5MB.")
+                                     .refine(files => files && /\.(jpg|jpeg|png|pdf)$/i.test(files[0]?.name), "Only JPG, PNG, or PDF files are allowed."),
 }).refine(data => data.returnDate > data.departureDate, {
   message: "Return date must be after departure date.",
   path: ["returnDate"],
@@ -45,29 +48,31 @@ export function ExeatRequestForm() {
     defaultValues: {
       purpose: '',
       contactInfo: '',
-      consentDocument: undefined,
+      // consentDocument will be undefined initially
     },
   });
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      form.setValue('consentDocument', event.target.files);
-      setSelectedFileName(event.target.files[0].name);
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      // Trigger validation for the file input
+      form.setValue('consentDocument', files, { shouldValidate: true });
+      setSelectedFileName(files[0].name);
     } else {
-      form.setValue('consentDocument', new DataTransfer().files); // clear value
+      form.setValue('consentDocument', new DataTransfer().files, { shouldValidate: true }); 
       setSelectedFileName(null);
     }
   };
 
   const onSubmit = async (values: ExeatRequestFormValues) => {
-    if (!currentUser || !currentUser.matricNumber) {
-      toast({ variant: "destructive", title: "Error", description: "User not logged in or matric number missing." });
+    if (!currentUser || !currentUser.matricNumber || !currentUser.firebaseUID) {
+      toast({ variant: "destructive", title: "Error", description: "User not logged in, matric number or UID missing." });
       return;
     }
     setIsSubmitting(true);
 
     const requestData: Omit<ExeatRequestType, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'approvalTrail' | 'currentStage'> = {
-      studentId: currentUser.id,
+      studentId: currentUser.firebaseUID, // Use Firebase UID
       studentName: currentUser.fullName,
       matricNumber: currentUser.matricNumber,
       purpose: values.purpose,
@@ -76,11 +81,12 @@ export function ExeatRequestForm() {
       contactInfo: values.contactInfo,
       // In a real app, upload the file and get URL. Here, just store name.
       consentDocumentName: values.consentDocument[0].name,
-      consentDocumentUrl: `https://placehold.co/200x300.png?text=${encodeURIComponent(values.consentDocument[0].name)}`
+      consentDocumentUrl: `https://placehold.co/200x300.png?text=${encodeURIComponent(values.consentDocument[0].name)}` // Mock URL
     };
 
     try {
-      const newExeat = await createExeatRequest(requestData, currentUser);
+      // Pass the full currentUser object which includes firebaseUID
+      const newExeat = await createExeatRequest(requestData, currentUser); 
       toast({ title: "Exeat Request Submitted!", description: `Your Exeat ID is ${newExeat.id}. Status: Pending.` });
       router.push('/student/dashboard');
     } catch (error) {
@@ -90,7 +96,11 @@ export function ExeatRequestForm() {
     }
   };
 
-  if (!currentUser) return <p>Loading user data...</p>;
+  if (!currentUser) return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Loading user data...
+      </div>
+    );
 
   return (
     <Form {...form}>
@@ -210,21 +220,24 @@ export function ExeatRequestForm() {
         <FormField
           control={form.control}
           name="consentDocument"
-          render={({ field }) => ( // `field` is not directly used for value due to FileList type
+          render={({ fieldState }) => ( 
             <FormItem>
-              <FormLabel>Parent/Guardian Consent Document (PDF/Image)</FormLabel>
+              <FormLabel>Parent/Guardian Consent Document (PDF/JPG/PNG, Max 5MB)</FormLabel>
               <FormControl>
                  <div className="relative">
                     <Input 
                       type="file" 
                       accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileChange}
+                      onChange={handleFileChange} // Use custom handler
                       className="hidden" 
-                      id="consentDocument"
+                      id="consentDocumentFile" // Changed ID to avoid conflict with field name if any
                     />
                     <Label 
-                      htmlFor="consentDocument"
-                      className="flex items-center justify-center w-full h-32 px-4 transition bg-background border-2 border-dashed rounded-md appearance-none cursor-pointer hover:border-primary focus:outline-none"
+                      htmlFor="consentDocumentFile"
+                      className={cn(
+                        "flex items-center justify-center w-full h-32 px-4 transition bg-background border-2 border-dashed rounded-md appearance-none cursor-pointer hover:border-primary focus:outline-none",
+                        fieldState.error && "border-destructive"
+                      )}
                     >
                       <span className="flex items-center space-x-2">
                         <UploadCloud className="w-6 h-6 text-muted-foreground" />
@@ -235,7 +248,7 @@ export function ExeatRequestForm() {
                     </Label>
                   </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage /> {/* This will show Zod validation errors */}
             </FormItem>
           )}
         />

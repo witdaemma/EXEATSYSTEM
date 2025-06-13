@@ -27,7 +27,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
@@ -44,6 +44,8 @@ export default function LoginPage() {
       const user = await login(values.email, values.password);
       if (user) {
         toast({ title: "Login Successful", description: `Welcome back, ${user.fullName}!` });
+        // Redirection logic is now primarily handled by src/app/page.tsx or AuthenticatedLayout
+        // But we can still provide a default push here.
         switch (user.role as UserRole) {
           case 'student':
             router.push('/student/dashboard');
@@ -57,17 +59,47 @@ export default function LoginPage() {
           case 'dsa':
             router.push('/dsa/dashboard');
             break;
-          case 'admin':
-            router.push('/admin/verify');
-            break;
           default:
             router.push('/'); 
         }
       } else {
+        // This path might not be reached if Firebase throws an error first
         toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or password." });
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Login Error", description: (error as Error).message });
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = "Invalid email or password.";
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = "Too many login attempts. Please try again later.";
+            break;
+          default:
+            errorMessage = "Login failed. Please try again.";
+        }
+      }
+      toast({ variant: "destructive", title: "Login Error", description: errorMessage });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const email = form.getValues("email");
+    if (!email || !z.string().email().safeParse(email).success) {
+      toast({ variant: "destructive", title: "Forgot Password", description: "Please enter a valid email address first."});
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await sendPasswordReset(email);
+      toast({ title: "Password Reset Email Sent", description: "If an account exists for this email, a password reset link has been sent." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error Sending Reset Email", description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -112,6 +144,17 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
+               <div className="flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="px-0 text-sm h-auto py-0"
+                  onClick={handleForgotPassword}
+                  disabled={isLoading}
+                >
+                  Forgot password?
+                </Button>
+              </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
@@ -126,12 +169,10 @@ export default function LoginPage() {
             </Link>
           </p>
            <p className="text-xs text-muted-foreground">
-            Porter/HOD/DSA/Admin should use provided credentials.
+            Porter/HOD/DSA should use provided credentials.
           </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
-    

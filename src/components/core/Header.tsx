@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from 'next/link';
-import { LogOut, UserCircle, LayoutDashboard, Search, FilePlus } from 'lucide-react';
+import { LogOut, UserCircle, LayoutDashboard, Search, FilePlus, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -14,31 +15,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Logo } from './Logo';
 import { useAuth } from '@/hooks/useAuth';
-import { UserRole } from '@/lib/types';
+import type { UserRole } from '@/lib/types';
 
 const getInitials = (name: string = "") => {
   return name
     .split(' ')
     .map((n) => n[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'U';
 };
 
 const getRoleBasedLinks = (role: UserRole | undefined) => {
   switch (role) {
-    case 'student':
-      return [
-        { href: '/student/dashboard', label: 'Dashboard', icon: <LayoutDashboard /> },
-        { href: '/student/request-exeat', label: 'Request Exeat', icon: <FilePlus /> },
-      ];
+    // Student links are handled by StudentSidebar
     case 'porter':
-      return [{ href: '/porter/dashboard', label: 'Pending Requests', icon: <LayoutDashboard /> }];
+      return [{ href: '/porter/dashboard', label: 'Porter Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
     case 'hod':
-      return [{ href: '/hod/dashboard', label: 'Review Requests', icon: <LayoutDashboard /> }];
+      return [{ href: '/hod/dashboard', label: 'HOD Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
     case 'dsa':
-      return [{ href: '/dsa/dashboard', label: 'Finalize Exeats', icon: <LayoutDashboard /> }];
-    case 'admin':
-      return [{ href: '/admin/verify', label: 'Verify Exeat', icon: <Search /> }];
+      return [{ href: '/dsa/dashboard', label: 'DSA Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
+    // Admin role removed
     default:
       return [];
   }
@@ -48,14 +44,15 @@ const getRoleBasedLinks = (role: UserRole | undefined) => {
 export function Header() {
   const { currentUser, logout } = useAuth();
 
-  if (!currentUser) {
-    return null; // Or a loading state/redirect handled by layout
+  if (!currentUser || currentUser.role === 'student') { 
+    // Header is not shown for students (they have a sidebar) or if no user
+    return null;
   }
 
   const navLinks = getRoleBasedLinks(currentUser.role);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm print:hidden">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-6">
           <Logo />
@@ -68,6 +65,11 @@ export function Header() {
                 </Link>
               </Button>
             ))}
+             <Button variant="ghost" asChild>
+                <Link href="/" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+                  <Search className="h-4 w-4" /> Verify Exeat
+                </Link>
+              </Button>
           </nav>
         </div>
         
@@ -79,7 +81,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(currentUser.fullName)}`} alt={currentUser.fullName} data-ai-hint="user avatar" />
+                  <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(currentUser.fullName)}`} alt={currentUser.fullName || "User"} data-ai-hint="user avatar" />
                   <AvatarFallback>{getInitials(currentUser.fullName)}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -94,7 +96,8 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
+              {/* Settings and Help could be added here for staff if needed */}
+              <DropdownMenuItem onClick={async () => await logout()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
