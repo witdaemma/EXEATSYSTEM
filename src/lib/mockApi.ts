@@ -1,12 +1,13 @@
+
 import type { User, ExeatRequest, ExeatStatus, UserRole, ExeatComment } from './types';
 import { format } from 'date-fns';
 
 let users: User[] = [
-  { id: 'student1', email: 'student1@mtu.edu', fullName: 'John Student', matricNumber: 'MTU/20/0001', role: 'student', password: 'password' },
-  { id: 'porter1', email: 'porter1@mtu.edu', fullName: 'Mr. Adam Porter', role: 'porter', password: 'password' },
-  { id: 'hod1', email: 'hod1@mtu.edu', fullName: 'Dr. Eve HOD', role: 'hod', password: 'password' },
-  { id: 'dsa1', email: 'dsa1@mtu.edu', fullName: 'Prof. Grace DSA', role: 'dsa', password: 'password' },
-  { id: 'admin1', email: 'admin1@mtu.edu', fullName: 'Admin User', role: 'admin', password: 'password' },
+  { id: 'student1', email: 'student1@mtu.edu.ng', fullName: 'John Student', matricNumber: 'MTU/20/0001', role: 'student', password: 'password' },
+  { id: 'porter1', email: 'porter1@mtu.edu.ng', fullName: 'Mr. Adam Porter', role: 'porter', password: 'password' },
+  { id: 'hod1', email: 'hod1@mtu.edu.ng', fullName: 'Dr. Eve HOD', role: 'hod', password: 'password' },
+  { id: 'dsa1', email: 'dsa1@mtu.edu.ng', fullName: 'Prof. Grace DSA', role: 'dsa', password: 'password' },
+  { id: 'admin1', email: 'admin1@mtu.edu.ng', fullName: 'Admin User', role: 'admin', password: 'password' },
 ];
 
 let exeatRequests: ExeatRequest[] = [
@@ -15,7 +16,7 @@ let exeatRequests: ExeatRequest[] = [
     studentId: 'student1',
     studentName: 'John Student',
     matricNumber: 'MTU/20/0001',
-    purpose: 'Family event',
+    purpose: 'Family event in City Center',
     departureDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
     returnDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
     contactInfo: '08012345678, No 1. Family Lane',
@@ -32,7 +33,7 @@ let exeatRequests: ExeatRequest[] = [
     studentId: 'student1',
     studentName: 'John Student',
     matricNumber: 'MTU/20/0001',
-    purpose: 'Medical Appointment',
+    purpose: 'Medical Appointment at Home',
     departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     returnDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
     contactInfo: '08098765432, General Hospital',
@@ -46,6 +47,28 @@ let exeatRequests: ExeatRequest[] = [
       { userId: 'porter1', userName: 'Mr. Adam Porter', role: 'porter', comment: 'Document looks okay. Forwarded.', timestamp: new Date().toISOString(), action: 'Approved' }
     ],
     currentStage: 'hod',
+  },
+   {
+    id: 'EX-MTU-2024-00003',
+    studentId: 'student1',
+    studentName: 'John Student',
+    matricNumber: 'MTU/20/0001',
+    purpose: 'Visit Campus Library',
+    departureDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), 
+    returnDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), 
+    contactInfo: 'On campus',
+    consentDocumentName: 'library_pass.pdf',
+    consentDocumentUrl: 'https://placehold.co/200x300.png?text=Consent',
+    status: 'Approved',
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    approvalTrail: [
+      { userId: 'student1', userName: 'John Student', role: 'student', comment: 'Submitted.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
+      { userId: 'porter1', userName: 'Mr. Adam Porter', role: 'porter', comment: 'Forwarded.', timestamp: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
+      { userId: 'hod1', userName: 'Dr. Eve HOD', role: 'hod', comment: 'Forwarded to DSA.', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
+      { userId: 'dsa1', userName: 'Prof. Grace DSA', role: 'dsa', comment: 'Approved.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' }
+    ],
+    currentStage: 'Completed',
   },
 ];
 
@@ -68,7 +91,6 @@ export const createUser = async (userData: Omit<User, 'id' | 'role'> & { role: U
   const newUser: User = { 
     id: `user-${Date.now()}`, 
     ...userData,
-    // Ensure matricNumber is set for students, or handle it as optional
     matricNumber: userData.role === 'student' ? (userData.matricNumber || `MTU/XX/${String(Math.floor(Math.random()*1000)).padStart(4,'0')}`) : undefined
   };
   users.push(newUser);
@@ -114,7 +136,7 @@ export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status
 export const updateExeatRequestStatus = async (
   exeatId: string,
   actor: User,
-  action: 'Approved' | 'Declined' | 'Rejected', // 'Declined' by Porter/HOD, 'Rejected' by DSA
+  action: 'Approved' | 'Declined' | 'Rejected', 
   commentText: string
 ): Promise<ExeatRequest | undefined> => {
   const exeat = exeatRequests.find(req => req.id === exeatId);
@@ -135,33 +157,36 @@ export const updateExeatRequestStatus = async (
     if (action === 'Approved') {
       exeat.status = 'Hold';
       exeat.currentStage = 'hod';
-    } else { // Declined
+    } else { 
       exeat.status = 'Rejected'; 
-      exeat.currentStage = 'Completed'; // Or 'RejectedByPorter'
+      exeat.currentStage = 'Completed'; 
     }
   } else if (actor.role === 'hod') {
     if (action === 'Approved') {
       exeat.status = 'Hold';
       exeat.currentStage = 'dsa';
-    } else { // Declined
+    } else { 
       exeat.status = 'Rejected';
-      exeat.currentStage = 'Completed'; // Or 'RejectedByHOD'
+      exeat.currentStage = 'Completed'; 
     }
   } else if (actor.role === 'dsa') {
     if (action === 'Approved') {
       exeat.status = 'Approved';
-    } else { // Rejected
+    } else { 
       exeat.status = 'Rejected';
     }
     exeat.currentStage = 'Completed';
   }
   
-  // Simulate saving
   exeatRequests = exeatRequests.map(req => req.id === exeatId ? exeat : req);
   return exeat;
 };
 
-// Helper to format date for display
-export const formatDate = (dateString: string | Date) => {
-  return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a");
+export const formatDate = (dateString: string | Date, includeTime: boolean = true) => {
+  if (includeTime) {
+    return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a");
+  }
+  return format(new Date(dateString), "yyyy-MM-dd");
 };
+
+    

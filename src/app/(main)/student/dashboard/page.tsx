@@ -1,13 +1,16 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ExeatCard } from '@/components/ExeatCard';
 import { useAuth } from '@/hooks/useAuth';
-import { getExeatRequestsByStudent } from '@/lib/mockApi';
+import { getExeatRequestsByStudent, formatDate } from '@/lib/mockApi';
 import type { ExeatRequest } from '@/lib/types';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { Loader2, Eye } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { StatusBadge } from '@/components/StatusBadge';
 
 export default function StudentDashboardPage() {
   const { currentUser } = useAuth();
@@ -26,36 +29,73 @@ export default function StudentDashboardPage() {
     }
   }, [currentUser]);
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center p-6">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading your dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-headline font-bold">Your Exeat Requests</h1>
-        <Button asChild size="lg" className="shadow-md hover:shadow-lg transition-shadow">
-          <Link href="/student/request-exeat" className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            Request New Exeat
-          </Link>
-        </Button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-headline font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome back, {currentUser?.fullName || 'Student'}!</p>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center py-10">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg">Loading your requests...</p>
-        </div>
-      ) : exeatRequests.length === 0 ? (
-        <div className="text-center py-10 bg-card rounded-lg shadow p-8">
-          <img src="https://placehold.co/300x200.png?text=No+Requests" alt="No requests" data-ai-hint="empty state illustration" className="mx-auto mb-4 rounded"/>
-          <p className="text-xl text-muted-foreground">You haven't made any exeat requests yet.</p>
-          <p className="text-muted-foreground">Click "Request New Exeat" to get started.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {exeatRequests.map((exeat) => (
-            <ExeatCard key={exeat.id} exeat={exeat} />
-          ))}
-        </div>
-      )}
+      <Card className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="font-headline text-xl">My Requests</CardTitle>
+          <CardDescription>A summary of your recent exeat applications.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {exeatRequests.length === 0 ? (
+            <div className="text-center py-10">
+              <img 
+                src="https://placehold.co/300x200.png?text=No+Requests+Yet" 
+                alt="No requests" 
+                data-ai-hint="empty state document" 
+                className="mx-auto mb-4 rounded-md"
+              />
+              <p className="text-xl text-muted-foreground">You haven't made any exeat requests yet.</p>
+              <p className="text-muted-foreground">Use the sidebar to "Request Exeat".</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Request ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Destination</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {exeatRequests.map((exeat) => (
+                  <TableRow key={exeat.id}>
+                    <TableCell className="font-medium">{exeat.id}</TableCell>
+                    <TableCell>{formatDate(exeat.departureDate, false)}</TableCell>
+                    <TableCell className="max-w-[250px] truncate">{exeat.purpose}</TableCell>
+                    <TableCell><StatusBadge status={exeat.status} /></TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/exeat/${exeat.id}`} className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" /> View
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+    

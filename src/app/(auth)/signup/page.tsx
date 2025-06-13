@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -17,8 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const signupSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
-  matricNumber: z.string().min(5, { message: 'Matric number is required.' }), // Example: MTU/XX/YYYY
-  email: z.string().email({ message: 'Invalid email address.' }).refine(val => val.endsWith('@mtu.edu'), { message: 'Email must be an MTU email address (@mtu.edu)'}),
+  matricNumber: z.string().min(5, { message: 'Matric number is required.' }),
+  email: z.string().email({ message: 'Invalid email address.' }).refine(val => val.endsWith('@mtu.edu.ng'), { message: 'Email must be an MTU email address (@mtu.edu.ng)'}),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
@@ -43,7 +44,7 @@ export default function SignupPage() {
   const onSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
     try {
-      const user = await signup(values); // Role is handled by useAuth signup for students
+      const user = await signup(values); 
       if (user) {
         toast({ title: "Signup Successful", description: "Your account has been created." });
         router.push('/student/dashboard');
@@ -103,7 +104,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="studentname@mtu.edu" {...field} />
+                      <Input type="email" placeholder="studentname@mtu.edu.ng" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -140,3 +141,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

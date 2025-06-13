@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -43,7 +44,6 @@ export default function LoginPage() {
       const user = await login(values.email, values.password);
       if (user) {
         toast({ title: "Login Successful", description: `Welcome back, ${user.fullName}!` });
-        // Redirect based on role
         switch (user.role as UserRole) {
           case 'student':
             router.push('/student/dashboard');
@@ -61,7 +61,7 @@ export default function LoginPage() {
             router.push('/admin/verify');
             break;
           default:
-            router.push('/'); // Fallback
+            router.push('/'); 
         }
       } else {
         toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or password." });
@@ -93,7 +93,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="you@mtu.edu" {...field} />
+                      <Input type="email" placeholder="you@mtu.edu.ng" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -133,3 +133,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
