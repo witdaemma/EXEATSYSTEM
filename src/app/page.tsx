@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link'; // Added this import
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole, ExeatRequest, ExeatComment } from '@/lib/types';
@@ -257,3 +258,4 @@ export default function HomePage() {
     </div>
   );
 }
+
