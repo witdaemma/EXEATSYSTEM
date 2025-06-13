@@ -19,7 +19,8 @@ import type { SignupData } from '@/lib/types';
 
 const signupSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
-  matricNumber: z.string().min(5, { message: 'Matric number is required.' }).regex(/^(MTU\/[0-9]{2}\/[0-9]{4})$/i, { message: "Matric number must be in format MTU/YY/NNNN"}),
+  matricNumber: z.string().min(5, { message: 'Matric number is required.' })
+    .regex(/^(MTU\/[0-9]{2}\/[0-9]{4}|[0-9]{11})$/i, { message: "Matric number must be in format MTU/YY/NNNN or an 11-digit ID."}),
   email: z.string().email({ message: 'Invalid email address.' }).refine(val => val.endsWith('@mtu.edu.ng'), { message: 'Email must be an MTU email address (@mtu.edu.ng)'}),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
@@ -111,7 +112,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Matric Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. MTU/21/0001" {...field} />
+                      <Input placeholder="e.g. MTU/21/0001 or 21010301009" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
