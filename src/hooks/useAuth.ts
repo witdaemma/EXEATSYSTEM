@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, firebaseConfig } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -15,6 +15,8 @@ import {
 } from 'firebase/auth';
 import type { User, UserRole, SignupData, UpdatePasswordData } from '@/lib/types';
 import { getUserByFirebaseUID, createUserProfile, updateUserProfile } from '@/lib/mockApi'; // We'll still use mockApi for profile data for now
+
+const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY';
 
 interface AuthContextType {
   currentUser: User | null; // Our app's User type
@@ -36,6 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      console.error("FIREBASE NOT CONFIGURED: Please update src/lib/firebase.ts with your project credentials. Authentication will not work.");
+      setIsLoading(false);
+      return; // Do not set up auth listener if firebase is not configured
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
@@ -51,6 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, pass: string): Promise<User | null> => {
+    if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+    }
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
@@ -67,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signup = useCallback(async (userData: SignupData): Promise<User | null> => {
+     if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+    }
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
@@ -93,6 +107,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (!isFirebaseConfigured) {
+      setCurrentUser(null);
+      setFirebaseUser(null);
+      router.push('/login');
+      return;
+    }
     setIsLoading(true);
     try {
       await signOut(auth);
@@ -107,13 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const updateUserPassword = useCallback(async (data: UpdatePasswordData) => {
+    if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+    }
     if (!auth.currentUser) throw new Error("User not authenticated.");
-    // Re-authentication might be needed for sensitive operations like password change.
-    // This example assumes user is recently logged in or re-authentication is handled elsewhere.
     try {
       await firebaseUpdatePassword(auth.currentUser, data.newPassword);
-      // Optionally, update password in your backend if you store it (hashed)
-      // For this app, Firebase Auth is the source of truth for passwords.
     } catch (error) {
       console.error("Password update error:", error);
       throw error;
@@ -121,6 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sendPasswordReset = useCallback(async (email: string) => {
+    if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+    }
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
