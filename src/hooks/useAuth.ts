@@ -73,12 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // The onAuthStateChanged listener will handle setting the user profile
-      const userProfile = await getUserByFirebaseUID(userCredential.user.uid);
-      setCurrentUser(userProfile); // Manually set here to ensure immediate update post-login
+      
+      // For immediate feedback on the login page, we fetch/link the profile right here.
+      let userProfile = await getUserByFirebaseUID(userCredential.user.uid);
+
+      // If no profile with this UID, it's a staff user's first login. Link it.
+      if (!userProfile && userCredential.user.email) {
+          userProfile = await linkProfileToFirebaseUser(userCredential.user.email, userCredential.user.uid);
+      }
+
+      // We still call setCurrentUser to ensure the global context is updated.
+      setCurrentUser(userProfile || null);
       setFirebaseUser(userCredential.user); 
+      
       setIsLoading(false);
-      return userProfile;
+      return userProfile || null; // Return the fetched/linked profile
     } catch (error) {
       setIsLoading(false);
       console.error("Firebase login error:", error);
