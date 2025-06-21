@@ -5,20 +5,17 @@ import { format } from 'date-fns';
 // In a real Firebase app, this user data would live in Firestore, not in-memory.
 // We're keeping it here for now to simulate profile data alongside Firebase Auth.
 let users: User[] = [
-  { id: 'student1-uid', firebaseUID: 'student1-uid', email: 'student1@mtu.edu.ng', fullName: 'Adekunle Gold', matricNumber: 'MTU/21/0001', role: 'student' },
+  { id: 'student1-uid', firebaseUID: 'student1-uid', email: 'student1@mtu.edu.ng', fullName: 'Binta Bello', matricNumber: 'MTU/21/0001', role: 'student' },
   { id: 'porter1-uid', firebaseUID: 'porter1-uid', email: 'porter1@mtu.edu.ng', fullName: 'Babatunde Porter', role: 'porter' },
   { id: 'hod1-uid', firebaseUID: 'hod1-uid', email: 'hod1@mtu.edu.ng', fullName: 'Dr. Chinyere HOD', role: 'hod' },
   { id: 'dsa1-uid', firebaseUID: 'dsa1-uid', email: 'dsa1@mtu.edu.ng', fullName: 'Prof. Dayo DSA', role: 'dsa' },
-  // Admin role is removed.
-  // Add more mock users that Firebase Auth would create. Password is not stored here.
-  // The 'id' here can be the same as firebaseUID for simplicity in this mock setup.
 ];
 
 let exeatRequests: ExeatRequest[] = [
   {
     id: 'EX-MTU-2025-00001',
-    studentId: 'student1-uid', // Matches firebaseUID
-    studentName: 'Adekunle Gold',
+    studentId: 'student1-uid', // This will be updated on student's first login
+    studentName: 'Binta Bello',
     matricNumber: 'MTU/21/0001',
     purpose: 'Attend National Programming Contest',
     departureDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), 
@@ -29,13 +26,13 @@ let exeatRequests: ExeatRequest[] = [
     status: 'Pending',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    approvalTrail: [{ userId: 'student1-uid', userName: 'Adekunle Gold', role: 'student', comment: 'Initial request submitted.', timestamp: new Date().toISOString(), action: 'Submitted' }],
+    approvalTrail: [{ userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Initial request submitted.', timestamp: new Date().toISOString(), action: 'Submitted' }],
     currentStage: 'porter',
   },
   {
     id: 'EX-MTU-2025-00002',
     studentId: 'student1-uid',
-    studentName: 'Adekunle Gold',
+    studentName: 'Binta Bello',
     matricNumber: 'MTU/21/0001',
     purpose: 'Urgent Family Visit',
     departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -47,7 +44,7 @@ let exeatRequests: ExeatRequest[] = [
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), 
     updatedAt: new Date().toISOString(),
     approvalTrail: [
-      { userId: 'student1-uid', userName: 'Adekunle Gold', role: 'student', comment: 'Initial request submitted.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
+      { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Initial request submitted.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
       { userId: 'porter1-uid', userName: 'Babatunde Porter', role: 'porter', comment: 'Verified student identity. Forwarded.', timestamp: new Date().toISOString(), action: 'Approved' }
     ],
     currentStage: 'hod',
@@ -55,7 +52,7 @@ let exeatRequests: ExeatRequest[] = [
    {
     id: 'EX-MTU-2025-00003',
     studentId: 'student1-uid',
-    studentName: 'Adekunle Gold',
+    studentName: 'Binta Bello',
     matricNumber: 'MTU/21/0001',
     purpose: 'Weekend trip home',
     departureDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
@@ -67,7 +64,7 @@ let exeatRequests: ExeatRequest[] = [
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     approvalTrail: [
-      { userId: 'student1-uid', userName: 'Adekunle Gold', role: 'student', comment: 'Request for weekend.', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
+      { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Request for weekend.', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
       { userId: 'porter1-uid', userName: 'Babatunde Porter', role: 'porter', comment: 'Checked and forwarded.', timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
       { userId: 'hod1-uid', userName: 'Dr. Chinyere HOD', role: 'hod', comment: 'Seems reasonable. Forwarded.', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
       { userId: 'dsa1-uid', userName: 'Prof. Dayo DSA', role: 'dsa', comment: 'Exeat approved. Maintain good conduct.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' }
@@ -77,9 +74,9 @@ let exeatRequests: ExeatRequest[] = [
 ];
 
 export const generateExeatId = (): string => {
-  const year = new Date().getFullYear(); // Will be 2025 if current year is 2025
+  const year = new Date().getFullYear();
   const randomNum = String(Math.floor(Math.random() * 90000) + 10000).padStart(5, '0');
-  return `EX-MTU-${year}-${randomNum}`; // Using current year for new IDs
+  return `EX-MTU-${year}-${randomNum}`;
 };
 
 
@@ -89,14 +86,19 @@ export const getUserByFirebaseUID = async (firebaseUID: string): Promise<User | 
 };
 
 export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseUID: string }): Promise<User> => {
-  const existingUser = users.find(u => u.firebaseUID === userData.firebaseUID || u.email === userData.email);
-  if (existingUser) {
-    // This case should ideally be handled by Firebase Auth for email uniqueness.
-    // If UID exists, it means profile creation might be re-attempted, update instead or handle.
-    // For now, let's assume this means an error or return existing.
-    console.warn("User profile or email already exists in mockApi:", userData.email);
-    return existingUser; 
+  const existingUserByUID = users.find(u => u.firebaseUID === userData.firebaseUID);
+  if (existingUserByUID) {
+    return existingUserByUID;
   }
+  
+  const existingUserByEmail = users.find(u => u.email === userData.email);
+  if (existingUserByEmail) {
+    console.warn("User with this email already exists, linking new UID. Email:", userData.email);
+    existingUserByEmail.firebaseUID = userData.firebaseUID;
+    existingUserByEmail.id = userData.firebaseUID;
+    return existingUserByEmail;
+  }
+
   const newUser: User = { 
     id: userData.firebaseUID, // Use Firebase UID as the primary ID for our app's User object
     ...userData,
@@ -104,6 +106,18 @@ export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseU
   };
   users.push(newUser);
   return newUser;
+};
+
+export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
+  const userIndex = users.findIndex(user => user.email === email);
+  if (userIndex !== -1) {
+    users[userIndex].firebaseUID = firebaseUID;
+    users[userIndex].id = firebaseUID;
+    console.log(`Successfully linked profile for ${email} to Firebase UID ${firebaseUID}`);
+    return users[userIndex];
+  }
+  console.log(`No mock profile found for email ${email} to link.`);
+  return undefined;
 };
 
 export const updateUserProfile = async (firebaseUID: string, profileData: Partial<User>): Promise<User | undefined> => {

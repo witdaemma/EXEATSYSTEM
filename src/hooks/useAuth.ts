@@ -14,7 +14,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import type { User, UserRole, SignupData, UpdatePasswordData } from '@/lib/types';
-import { getUserByFirebaseUID, createUserProfile, updateUserProfile } from '@/lib/mockApi'; // We'll still use mockApi for profile data for now
+import { getUserByFirebaseUID, createUserProfile, linkProfileToFirebaseUser } from '@/lib/mockApi'; 
 
 const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY';
 
@@ -48,8 +48,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         // Fetch our app-specific user profile from mockApi (or Firestore in a full setup)
-        const userProfile = await getUserByFirebaseUID(fbUser.uid);
-        setCurrentUser(userProfile || null); // Or create profile if it doesn't exist
+        let userProfile = await getUserByFirebaseUID(fbUser.uid);
+
+        // If no profile with this UID, it might be a pre-defined staff user's first login.
+        // Try to link the profile based on email.
+        if (!userProfile && fbUser.email) {
+            console.log(`No profile for UID ${fbUser.uid}. Trying to link by email ${fbUser.email}...`);
+            userProfile = await linkProfileToFirebaseUser(fbUser.email, fbUser.uid);
+        }
+
+        setCurrentUser(userProfile || null);
       } else {
         setCurrentUser(null);
       }
@@ -65,8 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      // The onAuthStateChanged listener will handle setting the user profile
       const userProfile = await getUserByFirebaseUID(userCredential.user.uid);
-      setCurrentUser(userProfile);
+      setCurrentUser(userProfile); // Manually set here to ensure immediate update post-login
       setFirebaseUser(userCredential.user); 
       setIsLoading(false);
       return userProfile;
