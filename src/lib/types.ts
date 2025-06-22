@@ -19,8 +19,11 @@ export interface SignupData {
 }
 
 export interface UpdatePasswordData {
-  currentPassword?: string; // May not be needed if re-authentication is handled by Firebase
   newPassword: string;
+}
+
+export interface UpdateProfileData {
+  fullName: string;
 }
 
 

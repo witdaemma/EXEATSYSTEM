@@ -6,9 +6,9 @@ import { format } from 'date-fns';
 // We're keeping it here for now to simulate profile data alongside Firebase Auth.
 let users: User[] = [
   { id: 'student1-uid', firebaseUID: 'student1-uid', email: 'student1@mtu.edu.ng', fullName: 'Binta Bello', matricNumber: 'MTU/21/0001', role: 'student' },
-  { id: 'porter1-uid', firebaseUID: 'porter1-uid', email: 'porter1@mtu.edu.ng', fullName: 'Babatunde Porter', role: 'porter' },
-  { id: 'hod1-uid', firebaseUID: 'hod1-uid', email: 'hod1@mtu.edu.ng', fullName: 'Dr. Chinyere HOD', role: 'hod' },
-  { id: 'dsa1-uid', firebaseUID: 'dsa1-uid', email: 'dsa1@mtu.edu.ng', fullName: 'Prof. Dayo DSA', role: 'dsa' },
+  { id: 'porter1-uid', firebaseUID: 'porter1-uid', email: 'porter1@mtu.edu.ng', fullName: 'Porter (Update Name)', role: 'porter' },
+  { id: 'hod1-uid', firebaseUID: 'hod1-uid', email: 'hod1@mtu.edu.ng', fullName: 'HOD (Update Name)', role: 'hod' },
+  { id: 'dsa1-uid', firebaseUID: 'dsa1-uid', email: 'dsa1@mtu.edu.ng', fullName: 'DSA (Update Name)', role: 'dsa' },
 ];
 
 let exeatRequests: ExeatRequest[] = [
@@ -45,7 +45,7 @@ let exeatRequests: ExeatRequest[] = [
     updatedAt: new Date().toISOString(),
     approvalTrail: [
       { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Initial request submitted.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
-      { userId: 'porter1-uid', userName: 'Babatunde Porter', role: 'porter', comment: 'Verified student identity. Forwarded.', timestamp: new Date().toISOString(), action: 'Approved' }
+      { userId: 'porter1-uid', userName: 'Porter (Update Name)', role: 'porter', comment: 'Verified student identity. Forwarded.', timestamp: new Date().toISOString(), action: 'Approved' }
     ],
     currentStage: 'hod',
   },
@@ -65,9 +65,9 @@ let exeatRequests: ExeatRequest[] = [
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     approvalTrail: [
       { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Request for weekend.', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
-      { userId: 'porter1-uid', userName: 'Babatunde Porter', role: 'porter', comment: 'Checked and forwarded.', timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
-      { userId: 'hod1-uid', userName: 'Dr. Chinyere HOD', role: 'hod', comment: 'Seems reasonable. Forwarded.', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
-      { userId: 'dsa1-uid', userName: 'Prof. Dayo DSA', role: 'dsa', comment: 'Exeat approved. Maintain good conduct.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' }
+      { userId: 'porter1-uid', userName: 'Porter (Update Name)', role: 'porter', comment: 'Checked and forwarded.', timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
+      { userId: 'hod1-uid', userName: 'HOD (Update Name)', role: 'hod', comment: 'Seems reasonable. Forwarded.', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
+      { userId: 'dsa1-uid', userName: 'DSA (Update Name)', role: 'dsa', comment: 'Exeat approved. Maintain good conduct.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' }
     ],
     currentStage: 'Completed',
   },
@@ -111,6 +111,10 @@ export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseU
 export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
   const userIndex = users.findIndex(user => user.email === email);
   if (userIndex !== -1) {
+    // If the user already has a firebaseUID, don't re-link. This happens on subsequent logins.
+    if (users[userIndex].firebaseUID && users[userIndex].firebaseUID !== 'porter1-uid' && users[userIndex].firebaseUID !== 'hod1-uid' && users[userIndex].firebaseUID !== 'dsa1-uid' && users[userIndex].firebaseUID !== 'student1-uid') {
+        return users[userIndex];
+    }
     users[userIndex].firebaseUID = firebaseUID;
     users[userIndex].id = firebaseUID;
     console.log(`Successfully linked profile for ${email} to Firebase UID ${firebaseUID}`);
@@ -122,8 +126,14 @@ export const linkProfileToFirebaseUser = async (email: string, firebaseUID: stri
 
 export const updateUserProfile = async (firebaseUID: string, profileData: Partial<User>): Promise<User | undefined> => {
   const userIndex = users.findIndex(u => u.firebaseUID === firebaseUID);
-  if (userIndex === -1) return undefined;
+  if (userIndex === -1) {
+    console.error(`User with UID ${firebaseUID} not found for update.`);
+    return undefined;
+  }
+  
+  console.log(`Updating profile for UID ${firebaseUID} with`, profileData);
   users[userIndex] = { ...users[userIndex], ...profileData };
+  console.log('Updated user:', users[userIndex]);
   return users[userIndex];
 };
 

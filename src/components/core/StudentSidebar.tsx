@@ -13,7 +13,7 @@ const navItems = [
   { href: '/student/dashboard', label: 'Dashboard', icon: Home },
   { href: '/student/request-exeat', label: 'Request Exeat', icon: Plus },
   { href: '/student/dashboard', label: 'My Requests', icon: ListChecks }, // Points to dashboard as it shows requests
-  { href: '/student/settings', label: 'Settings', icon: Settings },
+  { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/student/help', label: 'Help', icon: HelpCircle },
 ];
 
@@ -57,5 +57,3 @@ export function StudentSidebar() {
     </aside>
   );
 }
-
-    

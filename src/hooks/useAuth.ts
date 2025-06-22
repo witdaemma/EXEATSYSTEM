@@ -13,10 +13,10 @@ import {
   sendPasswordResetEmail,
   User as FirebaseUser
 } from 'firebase/auth';
-import type { User, UserRole, SignupData, UpdatePasswordData } from '@/lib/types';
-import { getUserByFirebaseUID, createUserProfile, linkProfileToFirebaseUser } from '@/lib/mockApi'; 
+import type { User, UserRole, SignupData, UpdatePasswordData, UpdateProfileData } from '@/lib/types';
+import { getUserByFirebaseUID, createUserProfile, linkProfileToFirebaseUser, updateUserProfile as mockUpdateUserProfile } from '@/lib/mockApi'; 
 
-const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY';
+const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_ACTUAL_API_KEY';
 
 interface AuthContextType {
   currentUser: User | null; // Our app's User type
@@ -27,6 +27,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserPassword: (data: UpdatePasswordData) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  updateUserProfile: (data: UpdateProfileData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,11 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        // Fetch our app-specific user profile from mockApi (or Firestore in a full setup)
         let userProfile = await getUserByFirebaseUID(fbUser.uid);
 
-        // If no profile with this UID, it might be a pre-defined staff user's first login.
-        // Try to link the profile based on email.
         if (!userProfile && fbUser.email) {
             console.log(`No profile for UID ${fbUser.uid}. Trying to link by email ${fbUser.email}...`);
             userProfile = await linkProfileToFirebaseUser(fbUser.email, fbUser.uid);
@@ -74,24 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       
-      // For immediate feedback on the login page, we fetch/link the profile right here.
       let userProfile = await getUserByFirebaseUID(userCredential.user.uid);
 
-      // If no profile with this UID, it's a staff user's first login. Link it.
       if (!userProfile && userCredential.user.email) {
           userProfile = await linkProfileToFirebaseUser(userCredential.user.email, userCredential.user.uid);
       }
-
-      // We still call setCurrentUser to ensure the global context is updated.
+      
       setCurrentUser(userProfile || null);
       setFirebaseUser(userCredential.user); 
       
       setIsLoading(false);
-      return userProfile || null; // Return the fetched/linked profile
+      return userProfile || null; 
     } catch (error) {
       setIsLoading(false);
       console.error("Firebase login error:", error);
-      throw error; // Re-throw for the form to handle
+      throw error;
     }
   }, []);
 
@@ -104,13 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const fbUser = userCredential.user;
       
-      // Create user profile in our system (mockApi for now)
       const newUserProfileData: Omit<User, 'id'> = {
         firebaseUID: fbUser.uid,
         email: userData.email,
         fullName: userData.fullName,
         matricNumber: userData.matricNumber,
-        role: 'student', // Sign up is always for students
+        role: 'student',
       };
       const newUserProfile = await createUserProfile(newUserProfileData);
       setCurrentUser(newUserProfile);
@@ -120,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       setIsLoading(false);
       console.error("Firebase signup error:", error);
-      throw error; // Re-throw for the form to handle
+      throw error;
     }
   }, []);
 
@@ -146,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUserPassword = useCallback(async (data: UpdatePasswordData) => {
     if (!isFirebaseConfigured) {
-      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+      throw new Error("Firebase is not configured.");
     }
     if (!auth.currentUser) throw new Error("User not authenticated.");
     try {
@@ -157,9 +151,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const updateUserProfile = useCallback(async (data: UpdateProfileData) => {
+    if (!currentUser || !currentUser.firebaseUID) {
+      throw new Error("User not authenticated.");
+    }
+    setIsLoading(true);
+    try {
+      const updatedProfile = await mockUpdateUserProfile(currentUser.firebaseUID, data);
+      if (updatedProfile) {
+        setCurrentUser(updatedProfile);
+      } else {
+        throw new Error("Profile update failed in mock API.");
+      }
+    } catch (error) {
+       console.error("Profile update error:", error);
+       throw error;
+    } finally {
+        setIsLoading(false);
+    }
+  }, [currentUser]);
+
   const sendPasswordReset = useCallback(async (email: string) => {
     if (!isFirebaseConfigured) {
-      throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
+      throw new Error("Firebase is not configured.");
     }
     try {
       await sendPasswordResetEmail(auth, email);
@@ -178,7 +192,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signup, 
     logout,
     updateUserPassword,
-    sendPasswordReset
+    sendPasswordReset,
+    updateUserProfile
   };
 
   return React.createElement(AuthContext.Provider, { value: value }, children);
