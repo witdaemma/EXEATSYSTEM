@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/hooks/useAuth';
 import type { ExeatRequest, User, UserRole } from '@/lib/types';
-import { updateExeatRequestStatus } from '@/lib/mockApi';
+import { updateExeatRequestStatus, formatDate } from '@/lib/mockApi';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
