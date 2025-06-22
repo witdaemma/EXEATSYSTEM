@@ -1,249 +1,306 @@
 
-import type { User, ExeatRequest, ExeatStatus, UserRole, ExeatComment, SignupData } from './types';
 import { format } from 'date-fns';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  addDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  Timestamp,
+  orderBy,
+  runTransaction,
+  increment,
+  arrayUnion
+} from 'firebase/firestore';
+import type { User, ExeatRequest, ExeatStatus, UserRole, ExeatComment } from './types';
+import { db } from './firebase'; // Import the initialized db
 
-// In a real Firebase app, this user data would live in Firestore, not in-memory.
-// We're keeping it here for now to simulate profile data alongside Firebase Auth.
-let users: User[] = [
-  { id: 'student1-uid', firebaseUID: 'student1-uid', email: 'student1@mtu.edu.ng', fullName: 'Binta Bello', matricNumber: 'MTU/21/0001', role: 'student' },
-  { id: 'porter1-uid', firebaseUID: 'porter1-uid', email: 'porter1@mtu.edu.ng', fullName: 'Porter (Update Name)', role: 'porter' },
-  { id: 'hod1-uid', firebaseUID: 'hod1-uid', email: 'hod1@mtu.edu.ng', fullName: 'HOD (Update Name)', role: 'hod' },
-  { id: 'dsa1-uid', firebaseUID: 'dsa1-uid', email: 'dsa1@mtu.edu.ng', fullName: 'DSA (Update Name)', role: 'dsa' },
-];
+// --- ID Generation ---
+export const generateExeatId = async (): Promise<string> => {
+  const counterRef = doc(db, 'counters', 'exeatRequests');
+  let newIdNumber;
 
-let exeatRequests: ExeatRequest[] = [
-  {
-    id: 'EX-MTU-2025-00001',
-    studentId: 'student1-uid', // This will be updated on student's first login
-    studentName: 'Binta Bello',
-    matricNumber: 'MTU/21/0001',
-    purpose: 'Attend National Programming Contest',
-    departureDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), 
-    returnDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), 
-    contactInfo: '08012345678, Tech Hub Lagos',
-    consentDocumentName: 'invitation_letter.pdf',
-    consentDocumentUrl: 'https://placehold.co/200x300.png?text=Invite',
-    status: 'Pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    approvalTrail: [{ userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Initial request submitted.', timestamp: new Date().toISOString(), action: 'Submitted' }],
-    currentStage: 'porter',
-  },
-  {
-    id: 'EX-MTU-2025-00002',
-    studentId: 'student1-uid',
-    studentName: 'Binta Bello',
-    matricNumber: 'MTU/21/0001',
-    purpose: 'Urgent Family Visit',
-    departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    returnDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    contactInfo: '08098765432, No. 5, Family Estate, Ibadan',
-    consentDocumentName: 'family_consent.jpg',
-    consentDocumentUrl: 'https://placehold.co/200x300.png?text=Consent',
-    status: 'Hold',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), 
-    updatedAt: new Date().toISOString(),
-    approvalTrail: [
-      { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Initial request submitted.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
-      { userId: 'porter1-uid', userName: 'Porter (Update Name)', role: 'porter', comment: 'Verified student identity. Forwarded.', timestamp: new Date().toISOString(), action: 'Approved' }
-    ],
-    currentStage: 'hod',
-  },
-   {
-    id: 'EX-MTU-2025-00003',
-    studentId: 'student1-uid',
-    studentName: 'Binta Bello',
-    matricNumber: 'MTU/21/0001',
-    purpose: 'Weekend trip home',
-    departureDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
-    returnDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), 
-    contactInfo: 'Home address, contact number',
-    consentDocumentName: 'parental_note.pdf',
-    consentDocumentUrl: 'https://placehold.co/200x300.png?text=Note',
-    status: 'Approved',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    approvalTrail: [
-      { userId: 'student1-uid', userName: 'Binta Bello', role: 'student', comment: 'Request for weekend.', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), action: 'Submitted' },
-      { userId: 'porter1-uid', userName: 'Porter (Update Name)', role: 'porter', comment: 'Checked and forwarded.', timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
-      { userId: 'hod1-uid', userName: 'HOD (Update Name)', role: 'hod', comment: 'Seems reasonable. Forwarded.', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' },
-      { userId: 'dsa1-uid', userName: 'DSA (Update Name)', role: 'dsa', comment: 'Exeat approved. Maintain good conduct.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), action: 'Approved' }
-    ],
-    currentStage: 'Completed',
-  },
-];
-
-export const generateExeatId = (): string => {
-  const year = new Date().getFullYear();
-  const randomNum = String(Math.floor(Math.random() * 90000) + 10000).padStart(5, '0');
-  return `EX-MTU-${year}-${randomNum}`;
-};
-
-
-// User Profile Functions (Simulating Firestore)
-export const getUserByFirebaseUID = async (firebaseUID: string): Promise<User | undefined> => {
-  return users.find(user => user.firebaseUID === firebaseUID);
-};
-
-export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseUID: string }): Promise<User> => {
-  const existingUserByUID = users.find(u => u.firebaseUID === userData.firebaseUID);
-  if (existingUserByUID) {
-    return existingUserByUID;
+  try {
+    await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      if (!counterDoc.exists()) {
+        // Initialize the counter if it doesn't exist.
+        transaction.set(counterRef, { count: 1 });
+        newIdNumber = 1;
+      } else {
+        newIdNumber = counterDoc.data().count + 1;
+        transaction.update(counterRef, { count: increment(1) });
+      }
+    });
+  } catch (e) {
+    console.error("Transaction failed: ", e);
+    throw new Error("Could not generate a new Exeat ID.");
   }
   
-  const existingUserByEmail = users.find(u => u.email === userData.email);
-  if (existingUserByEmail) {
-    console.warn("User with this email already exists, linking new UID. Email:", userData.email);
-    existingUserByEmail.firebaseUID = userData.firebaseUID;
-    existingUserByEmail.id = userData.firebaseUID;
-    return existingUserByEmail;
+  if (newIdNumber === undefined) {
+    throw new Error("Failed to get new ID number from transaction.");
   }
 
-  const newUser: User = { 
-    id: userData.firebaseUID, // Use Firebase UID as the primary ID for our app's User object
-    ...userData,
-    matricNumber: userData.role === 'student' ? (userData.matricNumber || `MTU/XX/${String(Math.floor(Math.random()*1000)).padStart(4,'0')}`) : undefined
-  };
-  users.push(newUser);
-  return newUser;
+  const year = new Date().getFullYear();
+  const idString = String(newIdNumber).padStart(5, '0');
+  return `EX-MTU-${year}-${idString}`;
 };
 
-export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
-  const userIndex = users.findIndex(user => user.email === email);
-  if (userIndex !== -1) {
-    // If the user already has a firebaseUID, don't re-link. This happens on subsequent logins.
-    if (users[userIndex].firebaseUID && users[userIndex].firebaseUID !== 'porter1-uid' && users[userIndex].firebaseUID !== 'hod1-uid' && users[userIndex].firebaseUID !== 'dsa1-uid' && users[userIndex].firebaseUID !== 'student1-uid') {
-        return users[userIndex];
-    }
-    users[userIndex].firebaseUID = firebaseUID;
-    users[userIndex].id = firebaseUID;
-    console.log(`Successfully linked profile for ${email} to Firebase UID ${firebaseUID}`);
-    return users[userIndex];
+
+// --- User Profile Functions (Firestore) ---
+export const getUserByFirebaseUID = async (firebaseUID: string): Promise<User | undefined> => {
+  const userDocRef = doc(db, 'users', firebaseUID);
+  const userDocSnap = await getDoc(userDocRef);
+
+  if (userDocSnap.exists()) {
+    const userData = userDocSnap.data();
+    return {
+      id: userDocSnap.id,
+      firebaseUID: userDocSnap.id,
+      ...userData
+    } as User;
   }
-  console.log(`No mock profile found for email ${email} to link.`);
   return undefined;
 };
 
-export const updateUserProfile = async (firebaseUID: string, profileData: Partial<User>): Promise<User | undefined> => {
-  const userIndex = users.findIndex(u => u.firebaseUID === firebaseUID);
-  if (userIndex === -1) {
-    console.error(`User with UID ${firebaseUID} not found for update.`);
-    return undefined;
-  }
+export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseUID: string }): Promise<User> => {
+  const userDocRef = doc(db, 'users', userData.firebaseUID);
   
-  console.log(`Updating profile for UID ${firebaseUID} with`, profileData);
-  users[userIndex] = { ...users[userIndex], ...profileData };
-  console.log('Updated user:', users[userIndex]);
-  return users[userIndex];
+  // Data to be stored in Firestore, excluding redundant fields
+  const profileData = {
+    email: userData.email,
+    fullName: userData.fullName,
+    role: userData.role,
+    ...(userData.role === 'student' && { matricNumber: userData.matricNumber })
+  };
+
+  await setDoc(userDocRef, profileData);
+
+  return {
+    id: userData.firebaseUID,
+    ...userData
+  };
+};
+
+export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        console.log(`No profile found for email ${email} to link.`);
+        return undefined;
+    }
+
+    // Assuming email is unique, there should be only one doc.
+    const userDoc = querySnapshot.docs[0];
+    const userDocRef = doc(db, 'users', userDoc.id);
+
+    // The user document ID should BE the firebaseUID. If they are different, it means
+    // we created the user manually in Firestore without a matching UID. Let's fix that.
+    // The best practice is to set the Document ID to the UID from the start.
+    // This function now assumes you've created users in Auth and a corresponding doc in Firestore.
+    // It will fetch that doc by email and confirm it's the right user.
+    
+    // For our case, let's just fetch by email and return the data, assuming it's the right person.
+    const userProfile = await getUserByFirebaseUID(userDoc.id);
+
+    // This check is important: if the found profile *is* the one for the UID, just return it.
+    if(userDoc.id === firebaseUID) {
+      return userProfile;
+    }
+
+    // If the doc ID is different from the UID (e.g. from manual creation with Auto-ID)
+    // this is a problem. The robust solution is to re-create the doc with the correct ID.
+    // For now, we will return the found profile, but this indicates a setup issue.
+    console.warn(`Firestore document ID '${userDoc.id}' does not match Firebase Auth UID '${firebaseUID}'. Please ensure Firestore document IDs for users are their UIDs.`);
+
+    return userProfile;
 };
 
 
-// Exeat Functions
+export const updateUserProfile = async (firebaseUID: string, profileData: Partial<User>): Promise<User | undefined> => {
+  const userDocRef = doc(db, 'users', firebaseUID);
+  await updateDoc(userDocRef, profileData);
+  return await getUserByFirebaseUID(firebaseUID);
+};
+
+
+// --- Exeat Functions (Firestore) ---
+
+// Helper function to fetch an exeat doc and its approval trail
+const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
+    const exeatData = exeatDocSnap.data();
+
+    const trailCollectionRef = collection(db, 'exeatRequests', exeatDocSnap.id, 'approvalTrail');
+    const trailQuery = query(trailCollectionRef, orderBy('timestamp', 'asc'));
+    const trailSnap = await getDocs(trailQuery);
+    const approvalTrail = trailSnap.docs.map(doc => doc.data() as ExeatComment);
+
+    return {
+        ...exeatData,
+        id: exeatDocSnap.id,
+        // Convert Firestore Timestamps to ISO strings
+        departureDate: (exeatData.departureDate as Timestamp).toDate().toISOString(),
+        returnDate: (exeatData.returnDate as Timestamp).toDate().toISOString(),
+        createdAt: (exeatData.createdAt as Timestamp).toDate().toISOString(),
+        updatedAt: (exeatData.updatedAt as Timestamp).toDate().toISOString(),
+        approvalTrail,
+    } as ExeatRequest;
+};
+
+
 export const getExeatRequestsByStudent = async (studentId: string): Promise<ExeatRequest[]> => {
-  return exeatRequests.filter(req => req.studentId === studentId).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const exeatCollection = collection(db, 'exeatRequests');
+  const q = query(exeatCollection, where('studentId', '==', studentId), orderBy('createdAt', 'desc'));
+  const querySnapshot = await getDocs(q);
+  
+  const requests = await Promise.all(querySnapshot.docs.map(getExeatWithTrail));
+  return requests;
 };
 
 export const getExeatRequestsForRole = async (role: UserRole, userId: string): Promise<ExeatRequest[]> => {
-  let relevantRequests: ExeatRequest[] = [];
-  switch (role) {
-    case 'porter':
-      relevantRequests = exeatRequests.filter(req => 
-        (req.status === 'Pending' && req.currentStage === 'porter') || 
-        req.approvalTrail.some(comment => comment.userId === userId && comment.role === 'porter')
-      );
-      break;
-    case 'hod':
-      relevantRequests = exeatRequests.filter(req => 
-        (req.status === 'Hold' && req.currentStage === 'hod') ||
-        req.approvalTrail.some(comment => comment.userId === userId && comment.role === 'hod')
-      );
-      break;
-    case 'dsa':
-      relevantRequests = exeatRequests.filter(req => 
-        (req.status === 'Hold' && req.currentStage === 'dsa') ||
-        req.approvalTrail.some(comment => comment.userId === userId && comment.role === 'dsa')
-      );
-      break;
-    default:
-      return [];
-  }
-  // Sort to show pending ones first, then by update date
-  return relevantRequests.sort((a,b) => {
-    const isAPending = (a.status === 'Pending' && a.currentStage === role) || (a.status === 'Hold' && a.currentStage === role);
-    const isBPending = (b.status === 'Pending' && b.currentStage === role) || (b.status === 'Hold' && b.currentStage === role);
-    if (isAPending && !isBPending) return -1;
-    if (!isAPending && isBPending) return 1;
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-  });
+    const exeatCollection = collection(db, 'exeatRequests');
+
+    // Query 1: Requests pending this role's action
+    const pendingQuery = query(exeatCollection, where('currentStage', '==', role));
+
+    // Query 2: Requests this user has already acted upon
+    const actedOnQuery = query(exeatCollection, where('approvalTrailUserIds', 'array-contains', userId));
+
+    const [pendingSnap, actedOnSnap] = await Promise.all([getDocs(pendingQuery), getDocs(actedOnQuery)]);
+    
+    const requestsMap = new Map<string, any>();
+    pendingSnap.docs.forEach(doc => requestsMap.set(doc.id, doc));
+    actedOnSnap.docs.forEach(doc => requestsMap.set(doc.id, doc));
+
+    const uniqueDocs = Array.from(requestsMap.values());
+
+    const requests = await Promise.all(uniqueDocs.map(getExeatWithTrail));
+    
+    // Sort to show pending ones first, then by update date
+    return requests.sort((a,b) => {
+        const isAPending = (a.status === 'Pending' && a.currentStage === role) || (a.status === 'Hold' && a.currentStage === role);
+        const isBPending = (b.status === 'Pending' && b.currentStage === role) || (b.status === 'Hold' && b.currentStage === role);
+        if (isAPending && !isBPending) return -1;
+        if (!isAPending && isBPending) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
 };
+
 
 export const getExeatRequestById = async (id: string): Promise<ExeatRequest | undefined> => {
-  return exeatRequests.find(req => req.id === id);
+  const exeatDocRef = doc(db, 'exeatRequests', id);
+  const exeatDocSnap = await getDoc(exeatDocRef);
+
+  if (!exeatDocSnap.exists()) {
+    return undefined;
+  }
+  return await getExeatWithTrail(exeatDocSnap);
 };
 
-export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'approvalTrail' | 'currentStage'>, student: User): Promise<ExeatRequest> => {
-  const newExeat: ExeatRequest = {
+export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'approvalTrail' | 'approvalTrailUserIds' |'currentStage'>, student: User): Promise<ExeatRequest> => {
+  const newExeatId = await generateExeatId();
+  const exeatDocRef = doc(db, 'exeatRequests', newExeatId);
+  const now = new Date();
+
+  const newExeatData = {
     ...data,
-    id: generateExeatId(),
     status: 'Pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    approvalTrail: [{ userId: student.firebaseUID, userName: student.fullName, role: 'student', comment: 'Initial request submitted.', timestamp: new Date().toISOString(), action: 'Submitted' }],
+    createdAt: Timestamp.fromDate(now),
+    updatedAt: Timestamp.fromDate(now),
     currentStage: 'porter',
+    approvalTrailUserIds: [student.firebaseUID],
   };
-  exeatRequests.push(newExeat);
-  return newExeat;
+
+  await setDoc(exeatDocRef, newExeatData);
+
+  const firstComment: ExeatComment = {
+      userId: student.firebaseUID, 
+      userName: student.fullName, 
+      role: 'student', 
+      comment: 'Initial request submitted.', 
+      timestamp: now.toISOString(), 
+      action: 'Submitted'
+  };
+
+  const trailCollectionRef = collection(db, 'exeatRequests', newExeatId, 'approvalTrail');
+  await addDoc(trailCollectionRef, { ...firstComment, timestamp: Timestamp.fromDate(now) });
+  
+  // Return the full object for confirmation
+  return await getExeatRequestById(newExeatId) as ExeatRequest;
 };
+
 
 export const updateExeatRequestStatus = async (
   exeatId: string,
-  actor: User, // actor is our app's User type, which has firebaseUID
+  actor: User,
   action: 'Approved' | 'Declined' | 'Rejected', 
   commentText: string
 ): Promise<ExeatRequest | undefined> => {
-  const exeat = exeatRequests.find(req => req.id === exeatId);
+  const exeatDocRef = doc(db, 'exeatRequests', exeatId);
+  const now = new Date();
+
+  const exeat = await getExeatRequestById(exeatId);
   if (!exeat) return undefined;
 
-  const newComment: ExeatComment = {
-    userId: actor.firebaseUID, // Use firebaseUID
-    userName: actor.fullName,
-    role: actor.role,
-    comment: commentText,
-    timestamp: new Date().toISOString(),
-    action: action,
-  };
-  exeat.approvalTrail.push(newComment);
-  exeat.updatedAt = new Date().toISOString();
+  let newStatus: ExeatStatus = exeat.status;
+  let newStage: UserRole | 'Completed' = exeat.currentStage;
 
   if (actor.role === 'porter') {
     if (action === 'Approved') {
-      exeat.status = 'Hold';
-      exeat.currentStage = 'hod';
+      newStatus = 'Hold';
+      newStage = 'hod';
     } else { 
-      exeat.status = 'Rejected'; 
-      exeat.currentStage = 'Completed'; 
+      newStatus = 'Rejected'; 
+      newStage = 'Completed'; 
     }
   } else if (actor.role === 'hod') {
     if (action === 'Approved') {
-      exeat.status = 'Hold';
-      exeat.currentStage = 'dsa';
+      newStatus = 'Hold';
+      newStage = 'dsa';
     } else { 
-      exeat.status = 'Rejected';
-      exeat.currentStage = 'Completed'; 
+      newStatus = 'Rejected';
+      newStage = 'Completed'; 
     }
   } else if (actor.role === 'dsa') {
     if (action === 'Approved') {
-      exeat.status = 'Approved';
+      newStatus = 'Approved';
     } else { 
-      exeat.status = 'Rejected';
+      newStatus = 'Rejected';
     }
-    exeat.currentStage = 'Completed';
+    newStage = 'Completed';
   }
+
+  // Update main exeat document
+  await updateDoc(exeatDocRef, {
+      status: newStatus,
+      currentStage: newStage,
+      updatedAt: Timestamp.fromDate(now),
+      approvalTrailUserIds: arrayUnion(actor.firebaseUID)
+  });
+
+  // Add new comment to approval trail subcollection
+  const newComment: Omit<ExeatComment, 'timestamp'> = {
+    userId: actor.firebaseUID,
+    userName: actor.fullName,
+    role: actor.role,
+    comment: commentText,
+    action: action,
+  };
+  const trailCollectionRef = collection(db, 'exeatRequests', exeatId, 'approvalTrail');
+  await addDoc(trailCollectionRef, { ...newComment, timestamp: Timestamp.fromDate(now) });
   
-  exeatRequests = exeatRequests.map(req => req.id === exeatId ? exeat : req);
-  return exeat;
+  return await getExeatRequestById(exeatId);
 };
 
+
+// --- Utility ---
 export const formatDate = (dateString: string | Date, includeTime: boolean = true) => {
   try {
     const date = new Date(dateString);

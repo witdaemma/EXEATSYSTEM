@@ -53,5 +53,6 @@ export interface ExeatRequest {
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
   approvalTrail: ExeatComment[];
+  approvalTrailUserIds: string[]; // For querying
   currentStage: UserRole | "Completed"; // Tracks whose turn it is or if completed
 }
