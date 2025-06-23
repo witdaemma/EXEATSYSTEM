@@ -43,7 +43,7 @@ export default function LoginPage() {
     try {
       const user = await login(values.email, values.password);
       if (user) {
-        toast({ title: "Login Successful", description: `Welcome back, ${user.fullName}!` });
+        toast({ title: "Login Successful", description: `Welcome back, ${user.fullName || user.email}!` });
         // Redirection logic is now primarily handled by src/app/page.tsx or AuthenticatedLayout
         // But we can still provide a default push here.
         switch (user.role as UserRole) {

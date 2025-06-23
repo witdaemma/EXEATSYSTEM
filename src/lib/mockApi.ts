@@ -186,13 +186,13 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
 
 export const getExeatRequestsByStudent = async (studentId: string): Promise<ExeatRequest[]> => {
   const exeatCollection = collection(db, 'exeatRequests');
-  const q = query(exeatCollection, where('studentId', '==', studentId));
+  const q = query(exeatCollection, where('studentId', '==', studentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   
   const requests = await Promise.all(querySnapshot.docs.map(getExeatWithTrail));
   
-  // Sort in the application layer to avoid needing a composite index.
-  return requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // Sorting is now handled by the Firestore query.
+  return requests;
 };
 
 export const getExeatRequestsForRole = async (role: UserRole, userId: string): Promise<ExeatRequest[]> => {
@@ -308,7 +308,7 @@ export const updateExeatRequestStatus = async (
   // Add new comment to approval trail subcollection
   const newComment = {
     userId: actor.firebaseUID,
-    userName: actor.fullName,
+    userName: actor.fullName || actor.email,
     role: actor.role,
     comment: commentText,
     action: action,

@@ -5,7 +5,7 @@ export interface User {
   id: string; // This will be the Firebase UID
   firebaseUID: string; // Explicitly store Firebase UID
   email: string;
-  fullName: string;
+  fullName?: string;
   matricNumber?: string;
   role: UserRole;
   // Password is not stored here; Firebase Auth handles it.
