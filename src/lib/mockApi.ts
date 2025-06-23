@@ -54,6 +54,7 @@ export const generateExeatId = async (): Promise<string> => {
 
 // --- User Profile Functions (Firestore) ---
 export const getUserByFirebaseUID = async (firebaseUID: string): Promise<User | undefined> => {
+  // Use the UID directly as the document ID
   const userDocRef = doc(db, 'users', firebaseUID);
   const userDocSnap = await getDoc(userDocRef);
 
@@ -88,6 +89,18 @@ export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseU
 };
 
 export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
+    // A user's document ID in the 'users' collection should ALWAYS be their Firebase UID.
+    // If we're logging in and a profile exists with a matching email but a DIFFERENT ID,
+    // it means there's a data consistency issue.
+    // The most direct way is to fetch the user profile using the UID.
+    // This function will attempt to find a user by email if a direct UID lookup fails,
+    // which might happen during the first login of a pre-seeded staff account.
+    
+    // First, try the most efficient lookup: by UID
+    const userByUID = await getUserByFirebaseUID(firebaseUID);
+    if (userByUID) return userByUID;
+
+    // If no user found by UID (e.g., first login for pre-seeded staff), try to find by email
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("email", "==", email));
     const querySnapshot = await getDocs(q);
@@ -97,30 +110,24 @@ export const linkProfileToFirebaseUser = async (email: string, firebaseUID: stri
         return undefined;
     }
 
-    // Assuming email is unique, there should be only one doc.
     const userDoc = querySnapshot.docs[0];
-    const userDocRef = doc(db, 'users', userDoc.id);
+    const userProfileData = userDoc.data();
 
-    // The user document ID should BE the firebaseUID. If they are different, it means
-    // we created the user manually in Firestore without a matching UID. Let's fix that.
-    // The best practice is to set the Document ID to the UID from the start.
-    // This function now assumes you've created users in Auth and a corresponding doc in Firestore.
-    // It will fetch that doc by email and confirm it's the right user.
-    
-    // For our case, let's just fetch by email and return the data, assuming it's the right person.
-    const userProfile = await getUserByFirebaseUID(userDoc.id);
+    // The user was found by email. Now, we create a new document with the correct Firebase UID as the ID
+    // and delete the old one to fix the data inconsistency.
+    const newUserDocRef = doc(db, 'users', firebaseUID);
+    await setDoc(newUserDocRef, userProfileData);
 
-    // This check is important: if the found profile *is* the one for the UID, just return it.
-    if(userDoc.id === firebaseUID) {
-      return userProfile;
-    }
+    // Optional but recommended: delete the old document that had the incorrect auto-ID
+    // await deleteDoc(userDoc.ref);
 
-    // If the doc ID is different from the UID (e.g. from manual creation with Auto-ID)
-    // this is a problem. The robust solution is to re-create the doc with the correct ID.
-    // For now, we will return the found profile, but this indicates a setup issue.
-    console.warn(`Firestore document ID '${userDoc.id}' does not match Firebase Auth UID '${firebaseUID}'. Please ensure Firestore document IDs for users are their UIDs.`);
+    console.warn(`User profile for ${email} was found with an incorrect document ID. It has been re-mapped to the correct Firebase UID: ${firebaseUID}.`);
 
-    return userProfile;
+    return {
+      id: firebaseUID,
+      firebaseUID: firebaseUID,
+      ...userProfileData
+    } as User;
 };
 
 
@@ -157,11 +164,14 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
 
 export const getExeatRequestsByStudent = async (studentId: string): Promise<ExeatRequest[]> => {
   const exeatCollection = collection(db, 'exeatRequests');
-  const q = query(exeatCollection, where('studentId', '==', studentId), orderBy('createdAt', 'desc'));
+  // The composite query was removed to avoid needing a manual index creation.
+  const q = query(exeatCollection, where('studentId', '==', studentId));
   const querySnapshot = await getDocs(q);
   
   const requests = await Promise.all(querySnapshot.docs.map(getExeatWithTrail));
-  return requests;
+  
+  // Sorting is now done in the application layer.
+  return requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const getExeatRequestsForRole = async (role: UserRole, userId: string): Promise<ExeatRequest[]> => {
