@@ -20,6 +20,28 @@ import {
 import type { User, ExeatRequest, ExeatStatus, UserRole, ExeatComment } from './types';
 import { db } from './firebase'; // Import the initialized db
 
+// --- Helper Function ---
+/**
+ * Safely converts a Firestore Timestamp, a JavaScript Date, or an ISO string into an ISO string.
+ * @param date The date value to convert.
+ * @returns An ISO date string.
+ */
+const toISOString = (date: Timestamp | string | Date | undefined): string => {
+  if (!date) {
+    // Fallback for undefined dates, though data validation should prevent this.
+    return new Date().toISOString();
+  }
+  if (date instanceof Timestamp) {
+    return date.toDate().toISOString();
+  }
+  if (date instanceof Date) {
+    return date.toISOString();
+  }
+  // If it's already a string, return it as is.
+  return date;
+};
+
+
 // --- ID Generation ---
 export const generateExeatId = async (): Promise<string> => {
   const counterRef = doc(db, 'counters', 'exeatRequests');
@@ -90,17 +112,12 @@ export const createUserProfile = async (userData: Omit<User, 'id'> & { firebaseU
 
 export const linkProfileToFirebaseUser = async (email: string, firebaseUID: string): Promise<User | undefined> => {
     // A user's document ID in the 'users' collection should ALWAYS be their Firebase UID.
-    // If we're logging in and a profile exists with a matching email but a DIFFERENT ID,
-    // it means there's a data consistency issue.
-    // The most direct way is to fetch the user profile using the UID.
     // This function will attempt to find a user by email if a direct UID lookup fails,
     // which might happen during the first login of a pre-seeded staff account.
     
-    // First, try the most efficient lookup: by UID
     const userByUID = await getUserByFirebaseUID(firebaseUID);
     if (userByUID) return userByUID;
 
-    // If no user found by UID (e.g., first login for pre-seeded staff), try to find by email
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("email", "==", email));
     const querySnapshot = await getDocs(q);
@@ -112,16 +129,15 @@ export const linkProfileToFirebaseUser = async (email: string, firebaseUID: stri
 
     const userDoc = querySnapshot.docs[0];
     const userProfileData = userDoc.data();
-
-    // The user was found by email. Now, we create a new document with the correct Firebase UID as the ID
-    // and delete the old one to fix the data inconsistency.
+    
+    // Create a new doc with the correct Firebase UID as the ID.
     const newUserDocRef = doc(db, 'users', firebaseUID);
     await setDoc(newUserDocRef, userProfileData);
 
-    // Optional but recommended: delete the old document that had the incorrect auto-ID
+    // Optional: You could delete the old document with the incorrect auto-ID here.
     // await deleteDoc(userDoc.ref);
 
-    console.warn(`User profile for ${email} was found with an incorrect document ID. It has been re-mapped to the correct Firebase UID: ${firebaseUID}.`);
+    console.warn(`User profile for ${email} has been re-mapped to the correct Firebase UID: ${firebaseUID}.`);
 
     return {
       id: firebaseUID,
@@ -151,18 +167,18 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
         const commentData = doc.data();
         return {
             ...commentData,
-            timestamp: (commentData.timestamp as Timestamp).toDate().toISOString()
+            timestamp: toISOString(commentData.timestamp)
         } as ExeatComment
     });
 
     return {
         ...exeatData,
         id: exeatDocSnap.id,
-        // Convert Firestore Timestamps to ISO strings
-        departureDate: (exeatData.departureDate as Timestamp).toDate().toISOString(),
-        returnDate: (exeatData.returnDate as Timestamp).toDate().toISOString(),
-        createdAt: (exeatData.createdAt as Timestamp).toDate().toISOString(),
-        updatedAt: (exeatData.updatedAt as Timestamp).toDate().toISOString(),
+        // Convert dates safely to ISO strings
+        departureDate: toISOString(exeatData.departureDate),
+        returnDate: toISOString(exeatData.returnDate),
+        createdAt: toISOString(exeatData.createdAt),
+        updatedAt: toISOString(exeatData.updatedAt),
         approvalTrail,
     } as ExeatRequest;
 };
@@ -170,13 +186,12 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
 
 export const getExeatRequestsByStudent = async (studentId: string): Promise<ExeatRequest[]> => {
   const exeatCollection = collection(db, 'exeatRequests');
-  // The composite query was removed to avoid needing a manual index creation.
   const q = query(exeatCollection, where('studentId', '==', studentId));
   const querySnapshot = await getDocs(q);
   
   const requests = await Promise.all(querySnapshot.docs.map(getExeatWithTrail));
   
-  // Sorting is now done in the application layer.
+  // Sort in the application layer to avoid needing a composite index.
   return requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
@@ -185,7 +200,6 @@ export const getExeatRequestsForRole = async (role: UserRole, userId: string): P
 
     // Query 1: Requests pending this role's action
     const pendingQuery = query(exeatCollection, where('currentStage', '==', role));
-
     // Query 2: Requests this user has already acted upon
     const actedOnQuery = query(exeatCollection, where('approvalTrailUserIds', 'array-contains', userId));
 
@@ -196,13 +210,12 @@ export const getExeatRequestsForRole = async (role: UserRole, userId: string): P
     actedOnSnap.docs.forEach(doc => requestsMap.set(doc.id, doc));
 
     const uniqueDocs = Array.from(requestsMap.values());
-
     const requests = await Promise.all(uniqueDocs.map(getExeatWithTrail));
     
     // Sort to show pending ones first, then by update date
     return requests.sort((a,b) => {
-        const isAPending = (a.status === 'Pending' && a.currentStage === role) || (a.status === 'Hold' && a.currentStage === role);
-        const isBPending = (b.status === 'Pending' && b.currentStage === role) || (b.status === 'Hold' && b.currentStage === role);
+        const isAPending = (a.status === 'Pending' || a.status === 'Hold') && a.currentStage === role;
+        const isBPending = (b.status === 'Pending' || b.status === 'Hold') && b.currentStage === role;
         if (isAPending && !isBPending) return -1;
         if (!isAPending && isBPending) return 1;
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
@@ -252,7 +265,9 @@ export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status
   await addDoc(trailCollectionRef, firstComment);
   
   // Return the full object for confirmation
-  return await getExeatRequestById(newExeatId) as ExeatRequest;
+  const newExeat = await getExeatRequestById(newExeatId);
+  if (!newExeat) throw new Error("Failed to create and retrieve new exeat request.");
+  return newExeat;
 };
 
 
@@ -272,28 +287,14 @@ export const updateExeatRequestStatus = async (
   let newStage: UserRole | 'Completed' = exeat.currentStage;
 
   if (actor.role === 'porter') {
-    if (action === 'Approved') {
-      newStatus = 'Hold';
-      newStage = 'hod';
-    } else { 
-      newStatus = 'Rejected'; 
-      newStage = 'Completed'; 
-    }
+    newStage = action === 'Approved' ? 'hod' : 'Completed';
+    newStatus = action === 'Approved' ? 'Hold' : 'Rejected';
   } else if (actor.role === 'hod') {
-    if (action === 'Approved') {
-      newStatus = 'Hold';
-      newStage = 'dsa';
-    } else { 
-      newStatus = 'Rejected';
-      newStage = 'Completed'; 
-    }
+    newStage = action === 'Approved' ? 'dsa' : 'Completed';
+    newStatus = action === 'Approved' ? 'Hold' : 'Rejected';
   } else if (actor.role === 'dsa') {
-    if (action === 'Approved') {
-      newStatus = 'Approved';
-    } else { 
-      newStatus = 'Rejected';
-    }
     newStage = 'Completed';
+    newStatus = action === 'Approved' ? 'Approved' : 'Rejected';
   }
 
   // Update main exeat document
