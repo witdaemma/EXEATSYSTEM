@@ -40,14 +40,10 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
-      const user = await login(values.email, values.password);
-      if (user) {
-        toast({ title: "Login Successful", description: `Welcome back, ${user.fullName || user.email}!` });
-        // Always redirect to the root page. It will handle the final role-based redirection.
+      const firebaseUser = await login(values.email, values.password);
+      if (firebaseUser) {
+        toast({ title: "Login Successful", description: "Redirecting to your dashboard..." });
         router.push('/');
-      } else {
-        // This path might not be reached if Firebase throws an error first
-        toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or password." });
       }
     } catch (error: any) {
       let errorMessage = "An unexpected error occurred.";

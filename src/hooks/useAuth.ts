@@ -22,7 +22,7 @@ interface AuthContextType {
   currentUser: User | null; // Our app's User type
   firebaseUser: FirebaseUser | null; // Firebase's User type
   isLoading: boolean;
-  login: (email: string, pass: string) => Promise<User | null>;
+  login: (email: string, pass: string) => Promise<FirebaseUser | null>;
   signup: (userData: SignupData) => Promise<User | null>;
   logout: () => Promise<void>;
   updateUserPassword: (data: UpdatePasswordData) => Promise<void>;
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
+        setIsLoading(true);
         let userProfile = await getUserByFirebaseUID(fbUser.uid);
 
         if (!userProfile && fbUser.email) {
@@ -64,27 +65,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = useCallback(async (email: string, pass: string): Promise<User | null> => {
+  const login = useCallback(async (email: string, pass: string): Promise<FirebaseUser | null> => {
     if (!isFirebaseConfigured) {
       throw new Error("Firebase is not configured. Please add your project credentials to src/lib/firebase.ts");
     }
-    setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      
-      let userProfile = await getUserByFirebaseUID(userCredential.user.uid);
-
-      if (!userProfile && userCredential.user.email) {
-          userProfile = await linkProfileToFirebaseUser(userCredential.user.email, userCredential.user.uid);
-      }
-      
-      setCurrentUser(userProfile || null);
-      setFirebaseUser(userCredential.user); 
-      
-      setIsLoading(false);
-      return userProfile || null; 
+      // The onAuthStateChanged listener will handle fetching the profile and setting state.
+      return userCredential.user;
     } catch (error) {
-      setIsLoading(false);
       console.error("Firebase login error:", error);
       throw error;
     }
@@ -125,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/login');
       return;
     }
-    setIsLoading(true);
     try {
       await signOut(auth);
       setCurrentUser(null);
@@ -134,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      setIsLoading(false);
+      // No need to set loading state on logout
     }
   }, [router]);
 
