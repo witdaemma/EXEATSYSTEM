@@ -1,9 +1,8 @@
-
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Plus, ListChecks, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Home, Plus, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +11,6 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/student/dashboard', label: 'Dashboard', icon: Home },
   { href: '/student/request-exeat', label: 'Request Exeat', icon: Plus },
-  { href: '/student/dashboard', label: 'My Requests', icon: ListChecks }, // Points to dashboard as it shows requests
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/student/help', label: 'Help', icon: HelpCircle },
 ];
