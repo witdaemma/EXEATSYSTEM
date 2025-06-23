@@ -1,40 +1,55 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions to make rules readable
+    function isStaff() {
+      // Check if the requesting user has a staff role in their user profile.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['porter', 'hod', 'dsa'];
+    }
     
-    // Basic User Profile Rules
-    match /users/{userId} {
-      // Any authenticated user can create a profile (for signup)
-      allow create: if request.auth != null;
-      // Only the user themselves can read or update their own profile
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+    function isOwner(exeat) {
+      // Check if the requesting user is the student who owns the exeat.
+      return request.auth.uid == exeat.studentId;
     }
 
-    // Counters for ID generation
+    // Rules for user profiles
+    match /users/{userId} {
+      // Users can read and update their own profile.
+      allow read, update: if request.auth.uid == userId;
+      // Any authenticated user can create a profile (for student signup).
+      allow create: if request.auth != null;
+    }
+
+    // Rules for counters used for ID generation
     match /counters/{counterId} {
-      // Any authenticated user can update counters (when creating a request)
+      // Any logged-in user can read/write to the counter.
       allow read, write: if request.auth != null;
     }
 
-    // Exeat Requests Rules
+    // Rules for exeat requests collection
     match /exeatRequests/{exeatId} {
-
-      // To unblock queries, we will temporarily allow any authenticated user to read all requests.
-      // This is NOT secure for production but will fix the dashboard permissions error.
-      // We can tighten this up again after confirming the app works.
-      allow read: if request.auth != null;
       
-      // Creation is only allowed if the request is for the currently logged-in user.
-      allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
+      // WHO CAN READ documents (get and list)?
+      // A user can read a document if they are the owner OR if they are staff.
+      // This rule correctly allows the dashboard queries for both students and staff.
+      allow read: if isOwner(resource.data) || isStaff();
       
-      // Updates are only allowed by staff (this should be secured further later).
-      allow update: if request.auth != null;
+      // WHO CAN CREATE documents?
+      // Only a student creating a request for themselves.
+      allow create: if isOwner(request.resource.data);
 
-      // Approval trail subcollection
-      match /approvalTrail/{commentId} {
-        // Allow any authenticated user to read/write to the trail, linking to the parent read rule.
-        allow read, create: if request.auth != null;
+      // WHO CAN UPDATE documents?
+      // Only staff members.
+      allow update: if isStaff();
+      
+      // Rules for the approval trail subcollection
+      match /approvalTrail/{trailId} {
+        // Staff can create comments/actions. Students create the initial one.
+        allow create: if request.auth != null;
+        // Anyone who can read the exeat can also read its trail.
+        allow read: if request.auth != null;
       }
     }
   }
