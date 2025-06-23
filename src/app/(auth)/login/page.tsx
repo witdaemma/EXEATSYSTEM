@@ -15,7 +15,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/core/Logo';
 import { useToast } from "@/hooks/use-toast";
-import type { UserRole } from '@/lib/types';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -44,24 +43,8 @@ export default function LoginPage() {
       const user = await login(values.email, values.password);
       if (user) {
         toast({ title: "Login Successful", description: `Welcome back, ${user.fullName || user.email}!` });
-        // Redirection logic is now primarily handled by src/app/page.tsx or AuthenticatedLayout
-        // But we can still provide a default push here.
-        switch (user.role as UserRole) {
-          case 'student':
-            router.push('/student/dashboard');
-            break;
-          case 'porter':
-            router.push('/porter/dashboard');
-            break;
-          case 'hod':
-            router.push('/hod/dashboard');
-            break;
-          case 'dsa':
-            router.push('/dsa/dashboard');
-            break;
-          default:
-            router.push('/'); 
-        }
+        // Always redirect to the root page. It will handle the final role-based redirection.
+        router.push('/');
       } else {
         // This path might not be reached if Firebase throws an error first
         toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or password." });
