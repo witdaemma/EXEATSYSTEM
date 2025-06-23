@@ -186,13 +186,14 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
 
 export const getExeatRequestsByStudent = async (studentId: string): Promise<ExeatRequest[]> => {
   const exeatCollection = collection(db, 'exeatRequests');
-  const q = query(exeatCollection, where('studentId', '==', studentId), orderBy('createdAt', 'desc'));
+  // Remove the 'orderBy' clause to avoid the composite index requirement.
+  const q = query(exeatCollection, where('studentId', '==', studentId));
   const querySnapshot = await getDocs(q);
   
   const requests = await Promise.all(querySnapshot.docs.map(getExeatWithTrail));
   
-  // Sorting is now handled by the Firestore query.
-  return requests;
+  // Perform the sorting in the application code instead of the database.
+  return requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const getExeatRequestsForRole = async (role: UserRole, userId: string): Promise<ExeatRequest[]> => {
