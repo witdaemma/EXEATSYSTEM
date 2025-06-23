@@ -1,47 +1,52 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to get the user's role from their profile
+    
     function getUserRole(userId) {
+      // Caches the document read for the duration of the request evaluation
       return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
-
-    // Users can read/update their own profile
+    
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      // Only authenticated users can create their own profile (on signup)
+      // Users can read their own profile
+      allow read: if request.auth.uid == userId;
+      // Users can only update their own full name
+      allow update: if request.auth.uid == userId && request.resource.data.keys().hasOnly(['fullName']);
+      // Users can create their own profile on signup
       allow create: if request.auth.uid == userId;
     }
-
-    // Exeat Requests
-    match /exeatRequests/{exeatId} {
-      // Allow creation by any authenticated user who has the 'student' role
-      allow create: if request.auth != null && getUserRole(request.auth.uid) == 'student';
-      
-      // Allow read by the student who owns it, or any authenticated staff
-      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
-      
-      // Allow update only by authenticated staff members according to the current stage
-      allow update: if request.auth != null && getUserRole(request.auth.uid) == resource.data.currentStage;
-    }
     
-    // Approval Trail subcollection
-    match /exeatRequests/{exeatId}/approvalTrail/{commentId} {
-        // Allow read by student owner or any staff
-        allow read: if request.auth != null && (get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid || getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
-        
-        // Allow creation (adding a comment) by student (for initial submission) or staff at the correct stage
-        allow create: if request.auth != null && (
-            (getUserRole(request.auth.uid) == 'student' && get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid) || 
-            (getUserRole(request.auth.uid) == get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.currentStage)
-          );
+    match /counters/{counterId} {
+      // Authenticated users can read/update counters for ID generation
+      allow read, write: if request.auth != null;
     }
 
-    // Allow read access to the counter for ID generation
-    match /counters/exeatRequests {
-        allow read, write: if request.auth != null; // Allow any authenticated user to read/write (for transactions)
+    match /exeatRequests/{exeatId} {
+      // GET: Allow anyone to fetch a single document by ID. 
+      // This is for the public verification portal. It's intentionally public.
+      allow get: if true;
+      
+      // LIST: Allow authenticated users to query for lists of exeats.
+      // A student can query for their own requests. Staff can query for requests they need to process.
+      allow list: if request.auth != null &&
+                     ((request.query.get('where')[0][2] == request.auth.uid) || // Student query by studentId
+                      (getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']));
+
+      // CREATE: Only students can create requests for themselves.
+      allow create: if request.auth.uid == request.resource.data.studentId && getUserRole(request.auth.uid) == 'student';
+      
+      // UPDATE: Only staff can update requests.
+      allow update: if request.auth != null && getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa'];
+
+      match /approvalTrail/{commentId} {
+        // READ: Allow reading the trail if you can read the parent document.
+        allow read: if (get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid) || 
+                       (request.auth != null && getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
+        
+        // CREATE: Allow creating comments if you are the student owner or a staff member.
+        allow create: if (get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid) || 
+                         (request.auth != null && getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
+      }
     }
   }
 }
