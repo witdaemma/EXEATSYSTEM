@@ -147,7 +147,13 @@ const getExeatWithTrail = async (exeatDocSnap: any): Promise<ExeatRequest> => {
     const trailCollectionRef = collection(db, 'exeatRequests', exeatDocSnap.id, 'approvalTrail');
     const trailQuery = query(trailCollectionRef, orderBy('timestamp', 'asc'));
     const trailSnap = await getDocs(trailQuery);
-    const approvalTrail = trailSnap.docs.map(doc => doc.data() as ExeatComment);
+    const approvalTrail = trailSnap.docs.map(doc => {
+        const commentData = doc.data();
+        return {
+            ...commentData,
+            timestamp: (commentData.timestamp as Timestamp).toDate().toISOString()
+        } as ExeatComment
+    });
 
     return {
         ...exeatData,
@@ -221,6 +227,9 @@ export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status
 
   const newExeatData = {
     ...data,
+    // Convert dates from ISO strings to Timestamps for Firestore storage
+    departureDate: Timestamp.fromDate(new Date(data.departureDate)),
+    returnDate: Timestamp.fromDate(new Date(data.returnDate)),
     status: 'Pending',
     createdAt: Timestamp.fromDate(now),
     updatedAt: Timestamp.fromDate(now),
@@ -230,17 +239,17 @@ export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status
 
   await setDoc(exeatDocRef, newExeatData);
 
-  const firstComment: ExeatComment = {
-      userId: student.firebaseUID, 
-      userName: student.fullName, 
-      role: 'student', 
-      comment: 'Initial request submitted.', 
-      timestamp: now.toISOString(), 
-      action: 'Submitted'
+  const firstComment = {
+    userId: student.firebaseUID,
+    userName: student.fullName,
+    role: 'student',
+    comment: 'Initial request submitted.',
+    action: 'Submitted',
+    timestamp: Timestamp.fromDate(now)
   };
 
   const trailCollectionRef = collection(db, 'exeatRequests', newExeatId, 'approvalTrail');
-  await addDoc(trailCollectionRef, { ...firstComment, timestamp: Timestamp.fromDate(now) });
+  await addDoc(trailCollectionRef, firstComment);
   
   // Return the full object for confirmation
   return await getExeatRequestById(newExeatId) as ExeatRequest;
@@ -296,15 +305,16 @@ export const updateExeatRequestStatus = async (
   });
 
   // Add new comment to approval trail subcollection
-  const newComment: Omit<ExeatComment, 'timestamp'> = {
+  const newComment = {
     userId: actor.firebaseUID,
     userName: actor.fullName,
     role: actor.role,
     comment: commentText,
     action: action,
+    timestamp: Timestamp.fromDate(now)
   };
   const trailCollectionRef = collection(db, 'exeatRequests', exeatId, 'approvalTrail');
-  await addDoc(trailCollectionRef, { ...newComment, timestamp: Timestamp.fromDate(now) });
+  await addDoc(trailCollectionRef, newComment);
   
   return await getExeatRequestById(exeatId);
 };
