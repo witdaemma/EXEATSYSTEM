@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,25 +13,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { StatusBadge } from '@/components/StatusBadge';
 
 export default function StudentDashboardPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const [exeatRequests, setExeatRequests] = useState<ExeatRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
+
+  const fetchRequests = useCallback(async () => {
+    if (currentUser && currentUser.role === 'student' && currentUser.firebaseUID) {
+      setIsFetching(true);
+      try {
+        const data = await getExeatRequestsByStudent(currentUser.firebaseUID);
+        setExeatRequests(data);
+      } catch (error) {
+        console.error("Failed to fetch exeat requests:", error);
+        setExeatRequests([]);
+      } finally {
+        setIsFetching(false);
+      }
+    }
+  }, [currentUser]);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'student' && currentUser.firebaseUID) {
-      setIsLoading(true);
-      getExeatRequestsByStudent(currentUser.firebaseUID)
-        .then(data => {
-          setExeatRequests(data);
-        })
-        .catch(error => console.error("Failed to fetch exeat requests:", error))
-        .finally(() => setIsLoading(false));
-    } else if (!currentUser && !isLoading) { // If not loading and still no current user (e.g. after logout)
-      setIsLoading(false); // Ensure loading is false
+    if (!authLoading && currentUser) {
+      fetchRequests();
     }
-  }, [currentUser, isLoading]);
+    if (!authLoading && !currentUser) {
+        setIsFetching(false);
+    }
+  }, [authLoading, currentUser, fetchRequests]);
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center p-6">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -72,7 +82,12 @@ export default function StudentDashboardPage() {
           <CardDescription>A summary of your exeat applications.</CardDescription>
         </CardHeader>
         <CardContent>
-          {exeatRequests.length === 0 ? (
+          {isFetching ? (
+             <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Fetching requests...</p>
+              </div>
+          ) : exeatRequests.length === 0 ? (
             <div className="text-center py-10">
               <img 
                 src="https://placehold.co/300x200.png?text=No+Requests+Yet" 
@@ -118,7 +133,7 @@ export default function StudentDashboardPage() {
             </div>
           )}
         </CardContent>
-        {exeatRequests.length > 0 && (
+        {exeatRequests.length > 0 && !isFetching && (
            <CardFooter className="justify-end">
              <p className="text-xs text-muted-foreground">Total Requests: {exeatRequests.length}</p>
            </CardFooter>
