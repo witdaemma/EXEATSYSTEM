@@ -1,46 +1,47 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId} {
-      // This rule allows any authenticated user to query the users collection.
-      // This is needed for the logic that links a staff member's pre-created profile to their 
-      // Firebase account on their first login by searching for their email.
-      // For production, you might replace this with a more secure method like a Cloud Function.
-      allow list: if request.auth != null;
-
-      // A user can read or update their own profile data.
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-
-      // A new user profile document can be created if the ID matches the user's Firebase UID.
-      allow create: if request.auth != null && request.auth.uid == userId;
+    // Helper function to get the user's role from their profile
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
-    // Rules for the main exeat requests collection.
-    match /exeatRequests/{exeatId} {
-      // Anyone can read an exeat request. This is required for the public verification portal.
-      allow read: if true;
+    // Users can read/update their own profile
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      // Only authenticated users can create their own profile (on signup)
+      allow create: if request.auth.uid == userId;
+    }
 
-      // An exeat can only be created by the student it belongs to.
-      allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
+    // Exeat Requests
+    match /exeatRequests/{exeatId} {
+      // Allow creation by any authenticated user who has the 'student' role
+      allow create: if request.auth != null && getUserRole(request.auth.uid) == 'student';
       
-      // An exeat can only be updated by authenticated staff members.
-      // This rule checks the user's role in the 'users' collection before allowing the write.
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['porter', 'hod', 'dsa'];
+      // Allow read by the student who owns it, or any authenticated staff
+      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
       
-      // Rules for the approval trail subcollection within each exeat.
-      match /approvalTrail/{commentId} {
-        // The trail can be read by anyone (for the verification portal).
-        allow read: if true;
-        // The trail can be added to by any authenticated user (the backend logic validates the specific role).
-        allow create: if request.auth != null; 
-      }
+      // Allow update only by authenticated staff members according to the current stage
+      allow update: if request.auth != null && getUserRole(request.auth.uid) == resource.data.currentStage;
     }
     
-    // The counter for generating new exeat IDs can be updated by any authenticated user.
+    // Approval Trail subcollection
+    match /exeatRequests/{exeatId}/approvalTrail/{commentId} {
+        // Allow read by student owner or any staff
+        allow read: if request.auth != null && (get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid || getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']);
+        
+        // Allow creation (adding a comment) by student (for initial submission) or staff at the correct stage
+        allow create: if request.auth != null && (
+            (getUserRole(request.auth.uid) == 'student' && get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid) || 
+            (getUserRole(request.auth.uid) == get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.currentStage)
+          );
+    }
+
+    // Allow read access to the counter for ID generation
     match /counters/exeatRequests {
-      allow read, write: if request.auth != null;
+        allow read, write: if request.auth != null; // Allow any authenticated user to read/write (for transactions)
     }
   }
 }
