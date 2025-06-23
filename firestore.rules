@@ -1,55 +1,53 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to make rules readable
-    function isStaff() {
-      // Check if the requesting user has a staff role in their user profile.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['porter', 'hod', 'dsa'];
-    }
-    
-    function isOwner(exeat) {
-      // Check if the requesting user is the student who owns the exeat.
-      return request.auth.uid == exeat.studentId;
+    // Helper function to get user's role from their profile
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
-    // Rules for user profiles
+    // Allow authenticated users to read profiles, but only update their own.
     match /users/{userId} {
-      // Users can read and update their own profile.
-      allow read, update: if request.auth.uid == userId;
-      // Any authenticated user can create a profile (for student signup).
-      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create;
+      allow update: if request.auth.uid == userId;
     }
 
-    // Rules for counters used for ID generation
-    match /counters/{counterId} {
-      // Any logged-in user can read/write to the counter.
-      allow read, write: if request.auth != null;
+    // Allow read access for the verification counter
+    match /counters/exeatRequests {
+      allow read: if true;
+      allow write: if false; // Only backend/transactions should write
     }
 
-    // Rules for exeat requests collection
     match /exeatRequests/{exeatId} {
-      
-      // WHO CAN READ documents (get and list)?
-      // A user can read a document if they are the owner OR if they are staff.
-      // This rule correctly allows the dashboard queries for both students and staff.
-      allow read: if isOwner(resource.data) || isStaff();
-      
-      // WHO CAN CREATE documents?
-      // Only a student creating a request for themselves.
-      allow create: if isOwner(request.resource.data);
+      // READ:
+      // 1. Staff (porter, hod, dsa) can read any request.
+      // 2. A student can read a request if their ID is on it.
+      allow read: if getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']
+                    || request.auth.uid == resource.data.studentId;
 
-      // WHO CAN UPDATE documents?
-      // Only staff members.
-      allow update: if isStaff();
-      
-      // Rules for the approval trail subcollection
-      match /approvalTrail/{trailId} {
-        // Staff can create comments/actions. Students create the initial one.
-        allow create: if request.auth != null;
-        // Anyone who can read the exeat can also read its trail.
-        allow read: if request.auth != null;
+      // CREATE:
+      // Only students can create requests, and they must be creating it for themselves.
+      allow create: if getUserRole(request.auth.uid) == 'student'
+                      && request.auth.uid == request.resource.data.studentId;
+
+      // UPDATE:
+      // Only staff can update requests.
+      allow update: if getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa'];
+
+      // Approval Trail subcollection
+      match /approvalTrail/{commentId} {
+        // READ:
+        // Anyone who can read the parent exeat can read the trail.
+        allow read: if get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId == request.auth.uid
+                      || getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa'];
+        
+        // WRITE:
+        // Only staff or the student who owns the request can add to the trail.
+        allow write: if getUserRole(request.auth.uid) in ['porter', 'hod', 'dsa']
+                       || request.auth.uid == get(/databases/$(database)/documents/exeatRequests/$(exeatId)).data.studentId;
       }
     }
   }
