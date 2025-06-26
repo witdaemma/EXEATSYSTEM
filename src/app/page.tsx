@@ -13,12 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { formatDate } from '@/lib/mockApi';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion, FileCheck2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/core/Logo';
 import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
+import { formatDate } from '@/lib/utils';
 
 const verifySchema = z.object({
   exeatId: z.string().min(1, { message: "Exeat ID is required." }),
@@ -49,7 +49,7 @@ const CommentCard = ({ comment }: { comment: ExeatComment }) => {
 
 function VerificationPortal() {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // undefined for not found
+  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // null: idle, undefined: not found/error
 
   const form = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
@@ -57,14 +57,21 @@ function VerificationPortal() {
   });
 
   const onSubmit = async (values: VerifyFormValues) => {
+    const trimmedId = values.exeatId.trim();
+    if (!trimmedId) {
+      form.setError("exeatId", { type: "manual", message: "Exeat ID is required." });
+      return;
+    }
+
     setIsVerifying(true);
-    setExeatDetails(null); 
+    setExeatDetails(null); // Reset to show loading state
     try {
-      const details = await verifyExeat({ exeatId: values.exeatId });
-      setExeatDetails(details); 
+      const details = await verifyExeat({ exeatId: trimmedId });
+      // If details are null, it means 'not found'. Set state to 'undefined' to trigger the error message.
+      setExeatDetails(details === null ? undefined : details);
     } catch (error) {
       console.error("Verification error:", error);
-      setExeatDetails(undefined); 
+      setExeatDetails(undefined); // Indicate error
     } finally {
       setIsVerifying(false);
     }
