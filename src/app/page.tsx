@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate } from '@/lib/mockApi';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react';
+import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion, FileCheck2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/core/Logo';
 import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
@@ -142,6 +142,16 @@ function VerificationPortal() {
                   <div><strong className="text-muted-foreground">Departure:</strong> {formatDate(exeatDetails.departureDate)}</div>
                   <div><strong className="text-muted-foreground">Return:</strong> {formatDate(exeatDetails.returnDate)}</div>
                   <div className="md:col-span-2"><strong className="text-muted-foreground">Contact:</strong> {exeatDetails.contactInfo}</div>
+                   {exeatDetails.consentFormUrl && (
+                    <div className="md:col-span-2">
+                      <strong className="text-muted-foreground">Consent:</strong>
+                      <Button asChild variant="link" className="p-0 h-auto ml-2">
+                          <Link href={exeatDetails.consentFormUrl} target="_blank" rel="noopener noreferrer">
+                              View Uploaded Document
+                          </Link>
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />

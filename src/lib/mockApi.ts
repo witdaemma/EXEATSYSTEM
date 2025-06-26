@@ -245,6 +245,7 @@ export const createExeatRequest = async (data: Omit<ExeatRequest, 'id' | 'status
     departureDate: Timestamp.fromDate(new Date(data.departureDate)),
     returnDate: Timestamp.fromDate(new Date(data.returnDate)),
     status: 'Pending',
+    consentFormUrl: data.consentFormUrl || null,
     createdAt: Timestamp.fromDate(now),
     updatedAt: Timestamp.fromDate(now),
     currentStage: 'porter',

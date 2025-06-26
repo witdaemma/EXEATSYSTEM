@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -89,6 +90,15 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
             Student: {exeat.studentName} ({exeat.matricNumber})<br/>
             Purpose: {exeat.purpose} <br/>
             Departure: {formatDate(exeat.departureDate, false)}, Return: {formatDate(exeat.returnDate, false)}
+             {exeat.consentFormUrl && (
+              <span className="block mt-2">
+                <Button asChild variant="link" className="p-0 h-auto text-sm">
+                  <Link href={exeat.consentFormUrl} target="_blank" rel="noopener noreferrer">
+                    View Uploaded Consent Form
+                  </Link>
+                </Button>
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

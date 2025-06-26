@@ -3,13 +3,13 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getExeatRequestById, formatDate } from '@/lib/mockApi';
 import type { ExeatRequest as ExeatRequestType, ExeatComment } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Printer, User, FileText, CalendarDays, Contact, ShieldCheck, ShieldAlert, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Printer, User, FileText, CalendarDays, Contact, ShieldCheck, ShieldAlert, MessageSquare, FileCheck2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/core/Logo';
 import { useAuth } from '@/hooks/useAuth';
@@ -156,6 +156,15 @@ export default function ExeatDetailPage() {
                 <p><CalendarDays className="inline mr-2 h-4 w-4 text-primary" /><strong>Return:</strong> {formatDate(exeat.returnDate)}</p>
                 <p className="md:col-span-2"><FileText className="inline mr-2 h-4 w-4 text-primary" /><strong>Purpose:</strong> {exeat.purpose}</p>
                 <p className="md:col-span-2"><Contact className="inline mr-2 h-4 w-4 text-primary" /><strong>Off-Campus Contact:</strong> {exeat.contactInfo}</p>
+                 {exeat.consentFormUrl && (
+                  <div className="md:col-span-2 mt-2">
+                      <Button asChild variant="secondary" className="print:hidden">
+                          <Link href={exeat.consentFormUrl} target="_blank" rel="noopener noreferrer">
+                              <FileCheck2 className="mr-2 h-4 w-4" /> View Consent Form
+                          </Link>
+                      </Button>
+                  </div>
+                )}
               </div>
             </section>
 

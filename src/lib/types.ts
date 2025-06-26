@@ -47,6 +47,7 @@ export interface ExeatRequest {
   departureDate: string; // ISO Date string
   returnDate: string;   // ISO Date string
   contactInfo: string;
+  consentFormUrl?: string; // Optional URL for the uploaded consent form
   status: ExeatStatus;
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
