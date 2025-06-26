@@ -47,7 +47,7 @@ The system enhances efficiency, ensures accountability, and provides real-time v
 -   **Styling**: Tailwind CSS
 -   **Authentication**: Firebase Authentication
 -   **Database**: Google Firestore (for users and exeat requests)
--   **File Storage**: Firebase Storage (for consent documents)
+-   **File Storage**: Cloudinary (for consent documents)
 -   **AI (Backend Logic)**: Genkit for secure server-side actions.
 
 ---
@@ -61,6 +61,7 @@ Follow these steps to set up and run the project locally.
 -   Node.js (v18 or later)
 -   npm or yarn
 -   A Google Account for Firebase
+-   A Cloudinary Account
 
 ### 2. Installation & Setup
 
@@ -74,7 +75,7 @@ npm install
 
 ### 3. Firebase Configuration (Crucial!)
 
-This project relies heavily on Firebase for authentication, database, and file storage. You **must** configure it to run the application.
+This project relies heavily on Firebase for authentication and database. You **must** configure it to run the application.
 
 1.  **Create a Firebase Project**: Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
 2.  **Add a Web App**: In your project's settings (click the gear icon ⚙️), add a new web application.
@@ -99,15 +100,25 @@ This project relies heavily on Firebase for authentication, database, and file s
     -   Go to the **Rules** tab in the Firestore Database section.
     -   Replace the default rules with the contents of the `firestore.rules` file from this repository (or see the rules in `src/lib/firebase.ts`). This is essential for the app to work correctly.
     -   Click **Publish**.
-8.  **Set Up Firebase Storage**:
-    -   Navigate to **Storage** in the Firebase Console and click **Get started**.
-    -   Follow the setup wizard to create a storage bucket.
-    -   Go to the **Rules** tab in the Storage section and replace the default rules with the ones provided in `src/lib/firebase.ts`. This is crucial for allowing document uploads and public viewing.
-    -   Click **Publish**.
 
-### 4. Run the Development Server
+### 4. Cloudinary Configuration (For File Uploads)
 
-Once Firebase is configured, start the development server:
+Consent form uploads are handled by Cloudinary.
+
+1.  **Create a Cloudinary Account**: Sign up for a free account at [Cloudinary](https://cloudinary.com/).
+2.  **Get API Credentials**: On your dashboard, you will find your `Cloud Name`, `API Key`, and `API Secret`.
+3.  **Create `.env` file**: Create a file named `.env` in the root of your project directory.
+4.  **Add Credentials to `.env` file**: Add the following lines to your `.env` file, replacing the placeholders with your actual credentials:
+    ```env
+    # Cloudinary Credentials
+    CLOUDINARY_CLOUD_NAME="YOUR_CLOUD_NAME"
+    CLOUDINARY_API_KEY="YOUR_API_KEY"
+    CLOUDINARY_API_SECRET="YOUR_API_SECRET"
+    ```
+
+### 5. Run the Development Server
+
+Once Firebase and Cloudinary are configured, start the development server:
 
 ```bash
 npm run dev
