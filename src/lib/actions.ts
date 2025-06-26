@@ -1,4 +1,3 @@
-
 'use server';
 
 import { v2 as cloudinary } from 'cloudinary';
@@ -20,9 +19,9 @@ cloudinary.config({
  */
 export async function uploadConsentForm(fileAsDataUrl: string): Promise<string> {
   // Guard clause to ensure Cloudinary is configured.
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    console.error("Cloudinary is not configured. Upload failed.");
-    throw new Error("File upload service is not available.");
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.error("Cloudinary credentials are not configured in the environment. Upload failed.");
+    throw new Error("File upload service is not configured. Please check server environment variables.");
   }
 
   try {
