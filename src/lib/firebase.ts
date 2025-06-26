@@ -46,25 +46,20 @@ export { app, auth, db, storage, firebaseConfig };
  *     rules_version = '2';
  *     service cloud.firestore {
  *       match /databases/{database}/documents {
- *         // Counters collection can be incremented by authenticated users
  *         match /counters/exeatRequests {
+ *           allow read: if true;
  *           allow write: if request.auth != null;
- *           allow read; 
  *         }
- *         // Users can only read their own profile, but can create one
  *         match /users/{userId} {
- *           allow read, update: if request.auth != null && request.auth.uid == userId;
  *           allow create: if request.auth != null;
+ *           allow read, update: if request.auth != null && request.auth.uid == userId;
  *         }
- *         // Exeat requests can be publicly read for verification,
- *         // but can only be written to by authenticated users.
  *         match /exeatRequests/{exeatId} {
- *           allow read;
+ *           allow read: if true;
  *           allow write: if request.auth != null;
  *         }
- *         // The approval trail (a subcollection) follows the same pattern.
- *         match /exeatRequests/{exeatId}/{document=**} {
- *           allow read;
+ *         match /exeatRequests/{exeatId}/approvalTrail/{commentId} {
+ *           allow read: if true;
  *           allow write: if request.auth != null;
  *         }
  *       }
