@@ -35,17 +35,16 @@ export { app, auth, db, storage, firebaseConfig };
 IMPORTANT: FIREBASE SETUP INSTRUCTIONS
 ================================================================================
 
-1.  **Replace Credentials**: Ensure the `firebaseConfig` object above contains your
-    actual Firebase project's configuration.
+1.  **Replace Credentials**: Ensure the firebaseConfig object is correct.
 
-2.  **Enable Services**: In the Firebase Console, you must enable:
-    -   **Authentication** (with the "Email/Password" provider).
-    -   **Firestore Database** (in Production mode).
-    -   **Storage**.
+2.  **Enable Services**: In the Firebase Console, enable Authentication, 
+    Firestore, and Storage.
 
-3.  **Firestore Security Rules**: Go to Firestore -> Rules. Delete everything
-    currently there and paste the following block of rules. This version is clean
-    to prevent copy-paste errors and allows public verification.
+3.  **COPY THE RULES BELOW**: Go to Firestore -> Rules in your Firebase Console.
+    Delete everything there and paste ONLY the block of code between the
+    "START COPYING HERE" and "STOP COPYING HERE" lines.
+
+// --- START COPYING HERE ---
 
 rules_version = '2';
 service cloud.firestore {
@@ -71,6 +70,9 @@ service cloud.firestore {
     }
   }
 }
+
+// --- STOP COPYING HERE ---
+
 
 4.  **Firebase Storage Security Rules**: Go to Storage -> Rules and paste the following.
     This allows uploads and makes consent forms viewable.
