@@ -126,14 +126,6 @@ export default function VerifyExeatPage() {
                 <div><strong className="text-muted-foreground">Departure:</strong> {formatDate(exeatDetails.departureDate)}</div>
                 <div><strong className="text-muted-foreground">Return:</strong> {formatDate(exeatDetails.returnDate)}</div>
                 <div className="md:col-span-2"><strong className="text-muted-foreground">Contact:</strong> {exeatDetails.contactInfo}</div>
-                {exeatDetails.consentDocumentName && (
-                  <div className="md:col-span-2">
-                    <strong className="text-muted-foreground">Consent Document:</strong> 
-                    <a href={exeatDetails.consentDocumentUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1" data-ai-hint="document signature">
-                      {exeatDetails.consentDocumentName}
-                    </a>
-                  </div>
-                )}
               </div>
 
               <Separator />

@@ -156,14 +156,6 @@ export default function ExeatDetailPage() {
                 <p><CalendarDays className="inline mr-2 h-4 w-4 text-primary" /><strong>Return:</strong> {formatDate(exeat.returnDate)}</p>
                 <p className="md:col-span-2"><FileText className="inline mr-2 h-4 w-4 text-primary" /><strong>Purpose:</strong> {exeat.purpose}</p>
                 <p className="md:col-span-2"><Contact className="inline mr-2 h-4 w-4 text-primary" /><strong>Off-Campus Contact:</strong> {exeat.contactInfo}</p>
-                {exeat.consentDocumentName && (
-                    <div className="md:col-span-2">
-                      <strong className="text-muted-foreground">Consent Document:</strong> 
-                      <a href={exeat.consentDocumentUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1" data-ai-hint="document signature">
-                        {exeat.consentDocumentName}
-                      </a>
-                    </div>
-                  )}
               </div>
             </section>
 

@@ -9,7 +9,6 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,19 +17,14 @@ import { createExeatRequest } from '@/lib/mockApi';
 import type { ExeatRequest as ExeatRequestType } from '@/lib/types';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, UploadCloud, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase'; // Import initialized storage
 
 const exeatRequestSchema = z.object({
   purpose: z.string().min(5, { message: "Purpose must be at least 5 characters." }).max(200, {message: "Purpose is too long (max 200 chars)."}),
   departureDate: z.date({ required_error: "Departure date is required." }),
   returnDate: z.date({ required_error: "Return date is required." }),
   contactInfo: z.string().min(10, { message: "Contact information must be at least 10 characters." }).max(150, {message: "Contact info is too long (max 150 chars)."}),
-  consentDocument: z.custom<FileList>().refine(files => files && files.length > 0, "Parent/Guardian consent is required.")
-                                     .refine(files => files && files[0]?.size <= 5 * 1024 * 1024, "File size should be less than 5MB.")
-                                     .refine(files => files && /\.(jpg|jpeg|png|pdf)$/i.test(files[0]?.name), "Only JPG, PNG, or PDF files are allowed."),
 }).refine(data => data.returnDate > data.departureDate, {
   message: "Return date must be after departure date.",
   path: ["returnDate"],
@@ -43,8 +37,6 @@ export function ExeatRequestForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'uploading' | 'saving'>('idle');
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
   const form = useForm<ExeatRequestFormValues>({
     resolver: zodResolver(exeatRequestSchema),
@@ -54,36 +46,14 @@ export function ExeatRequestForm() {
     },
   });
   
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      form.setValue('consentDocument', files, { shouldValidate: true });
-      setSelectedFileName(files[0].name);
-    } else {
-      form.setValue('consentDocument', new DataTransfer().files, { shouldValidate: true }); 
-      setSelectedFileName(null);
-    }
-  };
-
   const onSubmit = async (values: ExeatRequestFormValues) => {
     if (!currentUser || !currentUser.matricNumber || !currentUser.fullName) {
-      toast({ variant: "destructive", title: "Profile Incomplete", description: "Your profile is missing required information. Please contact support." });
+      toast({ variant: "destructive", title: "Profile Incomplete", description: "Your profile is missing required information. Please log in again or contact support." });
       return;
     }
     setIsSubmitting(true);
     
     try {
-      // 1. Upload the file to Firebase Storage
-      setSubmitStatus('uploading');
-      const file = values.consentDocument[0];
-      const filePath = `consentDocuments/${currentUser.firebaseUID}/${Date.now()}-${file.name}`;
-      const storageRef = ref(storage, filePath);
-      
-      const uploadTask = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(uploadTask.ref);
-
-      // 2. Prepare data for Firestore
-      setSubmitStatus('saving');
       const requestData: Omit<ExeatRequestType, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'approvalTrail' | 'currentStage' | 'approvalTrailUserIds'> = {
         studentId: currentUser.firebaseUID,
         studentName: currentUser.fullName,
@@ -92,11 +62,8 @@ export function ExeatRequestForm() {
         departureDate: values.departureDate.toISOString(),
         returnDate: values.returnDate.toISOString(),
         contactInfo: values.contactInfo,
-        consentDocumentName: file.name,
-        consentDocumentUrl: downloadURL
       };
       
-      // 3. Create the Exeat Request in Firestore
       const newExeat = await createExeatRequest(requestData, currentUser); 
       toast({ title: "Exeat Request Submitted!", description: `Your Exeat ID is ${newExeat.id}. Status: Pending.` });
       router.push('/student/dashboard');
@@ -106,16 +73,9 @@ export function ExeatRequestForm() {
       toast({ variant: "destructive", title: "Submission Failed", description: (error as Error).message });
     } finally {
       setIsSubmitting(false);
-      setSubmitStatus('idle');
     }
   };
   
-  const getButtonText = () => {
-    if (submitStatus === 'uploading') return 'Uploading document...';
-    if (submitStatus === 'saving') return 'Saving request...';
-    return 'Submit Exeat Request';
-  }
-
   if (!currentUser) return (
       <div className="flex items-center justify-center py-10">
         <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Loading user data...
@@ -237,47 +197,16 @@ export function ExeatRequestForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="consentDocument"
-          render={({ fieldState }) => ( 
-            <FormItem>
-              <FormLabel>Parent/Guardian Consent Document (PDF/JPG/PNG, Max 5MB)</FormLabel>
-              <FormControl>
-                 <div className="relative">
-                    <Input 
-                      type="file" 
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileChange}
-                      className="hidden" 
-                      id="consentDocumentFile"
-                      disabled={isSubmitting}
-                    />
-                    <Label 
-                      htmlFor="consentDocumentFile"
-                      className={cn(
-                        "flex items-center justify-center w-full h-32 px-4 transition bg-background border-2 border-dashed rounded-md appearance-none cursor-pointer hover:border-primary focus:outline-none",
-                        fieldState.error && "border-destructive",
-                        isSubmitting && "cursor-not-allowed opacity-50"
-                      )}
-                    >
-                      <span className="flex items-center space-x-2">
-                        <UploadCloud className="w-6 h-6 text-muted-foreground" />
-                        <span className="font-medium text-muted-foreground">
-                          {selectedFileName || "Click to upload document"}
-                        </span>
-                      </span>
-                    </Label>
-                  </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              By submitting this request, you confirm that all information is accurate. You will be required to present your parent/guardian's consent upon exit.
+            </p>
+        </div>
+
 
         <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {getButtonText()}
+          Submit Exeat Request
         </Button>
       </form>
     </Form>

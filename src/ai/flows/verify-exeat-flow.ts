@@ -33,8 +33,6 @@ const VerifyExeatOutputSchema = z.object({
   departureDate: z.string(),
   returnDate: z.string(),
   contactInfo: z.string(),
-  consentDocumentName: z.string().optional(),
-  consentDocumentUrl: z.string().optional(),
   status: z.enum(["Pending", "Hold", "Approved", "Rejected"]),
   createdAt: z.string(),
   updatedAt: z.string(),

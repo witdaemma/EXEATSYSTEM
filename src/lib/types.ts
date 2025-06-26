@@ -1,5 +1,5 @@
 
-export type UserRole = "student" | "porter" | "hod" | "dsa"; // Admin role removed
+export type UserRole = "student" | "porter" | "hod" | "dsa";
 
 export interface User {
   id: string; // This will be the Firebase UID
@@ -47,8 +47,6 @@ export interface ExeatRequest {
   departureDate: string; // ISO Date string
   returnDate: string;   // ISO Date string
   contactInfo: string;
-  consentDocumentName?: string; 
-  consentDocumentUrl?: string; // Path to uploaded file (mock)
   status: ExeatStatus;
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
