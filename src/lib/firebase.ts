@@ -30,53 +30,51 @@ const storage = getStorage(app);
 
 export { app, auth, db, storage, firebaseConfig };
 
-/**
- * IMPORTANT: SETUP INSTRUCTIONS
- * 
- * 1.  **Replace Credentials**: Replace the placeholder `firebaseConfig` values above with your actual 
- *     Firebase project's configuration. You can find this in your Firebase project settings.
- * 
- * 2.  **Enable Services**: In the Firebase Console, ensure you have enabled:
- *     -   **Authentication**: With the "Email/Password" provider.
- *     -   **Firestore Database**: In Production mode.
- *     -   **Storage**: Complete the setup wizard.
- * 
- * 3.  **Firestore Security Rules**: Go to Firestore -> Rules and paste the following block.
- *     This version is cleaned up to prevent copy-paste errors.
- * 
+/*
+================================================================================
+IMPORTANT: FIREBASE SETUP INSTRUCTIONS
+================================================================================
+
+1.  **Replace Credentials**: Ensure the `firebaseConfig` object above contains your
+    actual Firebase project's configuration.
+
+2.  **Enable Services**: In the Firebase Console, you must enable:
+    -   **Authentication** (with the "Email/Password" provider).
+    -   **Firestore Database** (in Production mode).
+    -   **Storage**.
+
+3.  **Firestore Security Rules**: Go to Firestore -> Rules. Delete everything
+    currently there and paste the following block of rules. This version is clean
+    to prevent copy-paste errors and allows public verification.
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
     match /users/{userId} {
       allow get, list: if request.auth != null;
       allow create, update: if request.auth.uid == userId;
     }
-
     match /exeatRequests/{exeatId} {
       function isStaff() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['porter', 'hod', 'dsa'];
       }
-      
       allow read: if true;
       allow create: if request.auth.uid == request.resource.data.studentId;
       allow update: if isStaff();
-      
       match /approvalTrail/{commentId} {
         allow read: if true;
         allow create: if request.auth.uid == request.resource.data.userId;
       }
     }
-    
     match /counters/exeatRequests {
       allow read, write: if request.auth != null;
     }
   }
 }
- * 
- * 4.  **Firebase Storage Security Rules**: Go to Storage -> Rules and paste the following.
- *     This is CRUCIAL for allowing uploads and making consent forms viewable by staff.
- * 
+
+4.  **Firebase Storage Security Rules**: Go to Storage -> Rules and paste the following.
+    This allows uploads and makes consent forms viewable.
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
@@ -86,4 +84,5 @@ service firebase.storage {
     }
   }
 }
- */
+
+*/
