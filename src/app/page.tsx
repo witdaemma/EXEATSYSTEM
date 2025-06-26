@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link'; // Added this import
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole, ExeatRequest, ExeatComment } from '@/lib/types';
@@ -13,17 +13,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { getExeatRequestById, formatDate } from '@/lib/mockApi';
+import { formatDate } from '@/lib/mockApi';
 import { StatusBadge } from '@/components/StatusBadge';
-import Image from 'next/image';
 import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/core/Logo';
+import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
 
 const verifySchema = z.object({
   exeatId: z.string().min(1, { message: "Exeat ID is required." }),
 });
 type VerifyFormValues = z.infer<typeof verifySchema>;
+
+type ExeatDetails = NonNullable<Awaited<ReturnType<typeof verifyExeat>>>;
 
 const CommentCard = ({ comment }: { comment: ExeatComment }) => {
   let icon = <MessageSquare className="h-5 w-5 text-muted-foreground" />;
@@ -47,7 +49,7 @@ const CommentCard = ({ comment }: { comment: ExeatComment }) => {
 
 function VerificationPortal() {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [exeatDetails, setExeatDetails] = useState<ExeatRequest | null | undefined>(null); // undefined for not found
+  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // undefined for not found
 
   const form = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
@@ -58,7 +60,7 @@ function VerificationPortal() {
     setIsVerifying(true);
     setExeatDetails(null); 
     try {
-      const details = await getExeatRequestById(values.exeatId);
+      const details = await verifyExeat({ exeatId: values.exeatId });
       setExeatDetails(details); 
     } catch (error) {
       console.error("Verification error:", error);
@@ -78,7 +80,6 @@ function VerificationPortal() {
       window.location.reload(); // Reload to restore event listeners and original state
     }
   };
-
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
@@ -160,23 +161,6 @@ function VerificationPortal() {
                     ))}
                   </div>
                 </div>
-                 {exeatDetails.status === 'Approved' && (
-                  <>
-                  <Separator />
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold mb-2 font-headline">QR Code for Verification</h3>
-                       <Image 
-                          src={`https://placehold.co/150x150.png?text=${encodeURIComponent(exeatDetails.id)}`} 
-                          alt="QR Code for Exeat Verification" 
-                          width={150} 
-                          height={150}
-                          data-ai-hint="qr code" 
-                          className="rounded-md shadow-md mx-auto"
-                        />
-                         <p className="text-xs text-muted-foreground mt-1">Scan to verify ID: {exeatDetails.id}</p>
-                    </div>
-                  </>
-                )}
                 
                 <Separator className="print-hidden" />
                 <div className="text-center print-hidden">
@@ -242,7 +226,7 @@ export default function HomePage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg font-semibold">Loading ExeatTrack...</p>
+        <p className="ml-4 text-lg font-semibold">Loading MTUEXCEAT...</p>
       </div>
     );
   }
@@ -258,4 +242,3 @@ export default function HomePage() {
     </div>
   );
 }
-

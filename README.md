@@ -1,9 +1,9 @@
 
-# ExeatTrack: MTU Exeat Management System
+# MTUEXCEAT: MTU Exeat Management System
 
-![Project Banner](https://placehold.co/1200x400.png?text=ExeatTrack)
+![Project Banner](https://placehold.co/1200x400.png?text=MTUEXCEAT)
 
-**ExeatTrack** is a modern, full-stack web application designed to digitize and streamline the student exeat (leave of absence) process at Mountain Top University (MTU). It replaces a manual, paper-based system with an efficient, transparent, and secure digital workflow, benefiting students and administrative staff alike.
+**MTUEXCEAT** is a modern, full-stack web application designed to digitize and streamline the student exeat (leave of absence) process at Mountain Top University (MTU). It replaces a manual, paper-based system with an efficient, transparent, and secure digital workflow, benefiting students and administrative staff alike.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg?logo=next.js)](https://nextjs.org/)
@@ -18,7 +18,7 @@ Traditionally, applying for an exeat at MTU involved a cumbersome, multi-step pa
 
 ## The Solution
 
-ExeatTrack provides a centralized digital platform with distinct, role-based portals for everyone involved in the exeat lifecycle:
+MTUEXCEAT provides a centralized digital platform with distinct, role-based portals for everyone involved in the exeat lifecycle:
 
 -   **Students**: Can easily submit and track exeat requests online.
 -   **Porters, HODs, DSA**: Can review, comment on, and approve or deny requests in a clear, sequential workflow.
@@ -32,7 +32,7 @@ The system enhances efficiency, ensures accountability, and provides real-time v
 -   **👨‍🎓 Student Portal**: Intuitive dashboard for students to submit detailed exeat requests, upload consent documents, and monitor the status of their applications in real-time.
 -   **🗂️ Staff Portals (Porter, HOD, DSA)**: Dedicated dashboards for each administrative role, showing only the requests that require their specific action.
 -   **➡️ Sequential Approval Workflow**: A robust, multi-step approval process. Requests move from Porter to Head of Department (HOD) and finally to the Dean of Student Affairs (DSA) for final sign-off.
--   **🆔 Unique Exeat ID & Printable Permit**: Upon final approval, a unique ID and a printable PDF permit are generated. The permit includes an approval trail and a QR code for easy verification.
+-   **🆔 Unique Exeat ID & Printable Permit**: Upon final approval, a unique ID and a printable PDF permit are generated. The permit includes a full approval trail for verification.
 -   **🛡️ Public Verification Portal**: A landing page feature allowing security personnel or parents to enter an Exeat ID and instantly verify its authenticity and current status.
 -   **🔐 Secure Authentication**: Built with Firebase Authentication, ensuring that only authorized users can access the system.
 -   **📝 Profile Management**: All users can update their profile information and change their passwords.
@@ -47,7 +47,8 @@ The system enhances efficiency, ensures accountability, and provides real-time v
 -   **Styling**: Tailwind CSS
 -   **Authentication**: Firebase Authentication
 -   **Database**: Google Firestore (for users and exeat requests)
--   **AI (Optional)**: Genkit for potential future AI features.
+-   **File Storage**: Firebase Storage (for consent documents)
+-   **AI (Backend Logic)**: Genkit for secure server-side actions.
 
 ---
 
@@ -73,7 +74,7 @@ npm install
 
 ### 3. Firebase Configuration (Crucial!)
 
-This project relies heavily on Firebase for authentication and database services. You **must** configure it to run the application.
+This project relies heavily on Firebase for authentication, database, and file storage. You **must** configure it to run the application.
 
 1.  **Create a Firebase Project**: Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
 2.  **Add a Web App**: In your project's settings (click the gear icon ⚙️), add a new web application.
@@ -94,9 +95,14 @@ This project relies heavily on Firebase for authentication and database services
     -   Navigate to **Firestore Database** and click **Create database**.
     -   Start in **production mode** (it's more secure).
     -   Choose a location for your database.
-7.  **Add Security Rules**:
+7.  **Add Firestore Security Rules**:
     -   Go to the **Rules** tab in the Firestore Database section.
-    -   Replace the default rules with the contents of the `firestore.rules` file from this repository. This is essential for the app to work correctly.
+    -   Replace the default rules with the contents of the `firestore.rules` file from this repository (or see the rules in `src/lib/firebase.ts`). This is essential for the app to work correctly.
+    -   Click **Publish**.
+8.  **Set Up Firebase Storage**:
+    -   Navigate to **Storage** in the Firebase Console and click **Get started**.
+    -   Follow the setup wizard to create a storage bucket.
+    -   Go to the **Rules** tab in the Storage section and replace the default rules with the ones provided in `src/lib/firebase.ts`. This is crucial for allowing document uploads and public viewing.
     -   Click **Publish**.
 
 ### 4. Run the Development Server

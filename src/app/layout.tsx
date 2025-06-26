@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/hooks/useAuth'; // Import AuthProvider
 
 export const metadata: Metadata = {
-  title: 'ExeatTrack - MTU Exeat System',
+  title: 'MTUEXCEAT - MTU Exeat System',
   description: 'Modernized Exeat System for MTU',
 };
 

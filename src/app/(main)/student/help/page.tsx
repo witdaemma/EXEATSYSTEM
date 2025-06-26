@@ -19,7 +19,7 @@ export default function HelpPage() {
             <HelpCircleIcon className="mr-2 h-6 w-6 text-primary" />
             Frequently Asked Questions (FAQ)
           </CardTitle>
-          <CardDescription>Common queries about the ExeatTrack system.</CardDescription>
+          <CardDescription>Common queries about the MTUEXCEAT system.</CardDescription>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
@@ -47,7 +47,7 @@ export default function HelpPage() {
             <AccordionItem value="item-4">
               <AccordionTrigger>Who do I contact if I have an issue?</AccordionTrigger>
               <AccordionContent>
-                For technical issues with the ExeatTrack system, please contact the IT support desk. For questions regarding exeat policies or specific decisions on your request, please consult with the Student Affairs office or your Head of Department.
+                For technical issues with the MTUEXCEAT system, please contact the IT support desk. For questions regarding exeat policies or specific decisions on your request, please consult with the Student Affairs office or your Head of Department.
               </AccordionContent>
             </AccordionItem>
              <AccordionItem value="item-5">
@@ -80,5 +80,3 @@ export default function HelpPage() {
     </div>
   );
 }
-
-    

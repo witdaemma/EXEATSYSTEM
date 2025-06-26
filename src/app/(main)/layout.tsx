@@ -39,7 +39,7 @@ export default function AuthenticatedLayout({
           <main className="flex-1 pl-64 bg-background"> {/* Adjust pl value to match sidebar width */}
             {children}
              <footer className="py-6 text-center text-sm text-muted-foreground border-t bg-background print:hidden">
-              © {new Date().getFullYear()} ExeatTrack - MTU. All rights reserved.
+              © {new Date().getFullYear()} MTUEXCEAT - MTU. All rights reserved.
             </footer>
           </main>
         </div>
@@ -50,12 +50,10 @@ export default function AuthenticatedLayout({
             {children}
           </main>
           <footer className="py-6 text-center text-sm text-muted-foreground border-t print:hidden">
-            © {new Date().getFullYear()} ExeatTrack - MTU. All rights reserved.
+            © {new Date().getFullYear()} MTUEXCEAT - MTU. All rights reserved.
           </footer>
         </>
       )}
     </div>
   );
 }
-
-    

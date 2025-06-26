@@ -3,13 +3,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6qOlaMBwU2I1YnEJ6L0MZpidpNTT6FWk",
   authDomain: "mtuexceat-6660d.firebaseapp.com",
   projectId: "mtuexceat-6660d",
-  storageBucket: "mtuexceat-6660d.firebasestorage.app",
+  storageBucket: "mtuexceat-6660d.appspot.com", // Corrected storage bucket format
   messagingSenderId: "11331869899",
   appId: "1:11331869899:web:bc6603fe898733b08a4f4e"
 };
@@ -25,26 +26,61 @@ if (!getApps().length) {
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-export { app, auth, db, firebaseConfig };
+export { app, auth, db, storage, firebaseConfig };
 
 /**
- * IMPORTANT:
- * 1. Replace the placeholder `firebaseConfig` values above with your actual Firebase project's configuration.
- * You can find these details in your Firebase project settings:
- * Project Overview -> Project settings (gear icon) -> General tab -> Your apps -> Firebase SDK snippet (click Config).
+ * IMPORTANT: SETUP INSTRUCTIONS
  * 
- * 2. Ensure you have enabled Email/Password sign-in in Firebase Authentication:
- * Firebase Console -> Authentication -> Sign-in method -> Email/Password (enable it).
+ * 1.  **Replace Credentials**: Replace the placeholder `firebaseConfig` values above with your actual 
+ *     Firebase project's configuration. You can find this in your Firebase project settings.
  * 
- * 3. Set up Firestore security rules. For development, you can start with:
- * rules_version = '2';
- * service cloud.firestore {
- *   match /databases/{database}/documents {
- *     match /{document=**} {
- *       allow read, write: if request.auth != null; // Or more restrictive rules
+ * 2.  **Enable Services**: In the Firebase Console, ensure you have enabled:
+ *     -   **Authentication**: With the "Email/Password" provider.
+ *     -   **Firestore Database**: In Production mode.
+ *     -   **Storage**: Complete the setup wizard.
+ * 
+ * 3.  **Firestore Security Rules**: Go to Firestore -> Rules and paste the following:
+ *     ```
+ *     rules_version = '2';
+ *     service cloud.firestore {
+ *       match /databases/{database}/documents {
+ *         // Counters collection can be incremented by authenticated users
+ *         match /counters/exeatRequests {
+ *           allow write: if request.auth != null;
+ *           allow read; 
+ *         }
+ *         // Users can only read their own profile, but can create one
+ *         match /users/{userId} {
+ *           allow read, update: if request.auth != null && request.auth.uid == userId;
+ *           allow create: if request.auth != null;
+ *         }
+ *         // Exeat requests can be read by anyone (for verification), but only created/updated by authenticated users.
+ *         // Security for updates is handled in the backend logic.
+ *         match /exeatRequests/{exeatId}/{document=**} {
+ *           allow read, write: if request.auth != null;
+ *         }
+ *         match /exeatRequests/{exeatId} {
+ *           allow read, write: if request.auth != null;
+ *         }
+ *       }
  *     }
- *   }
- * }
- * Remember to configure more secure rules for production.
+ *     ```
+ * 
+ * 4.  **Firebase Storage Security Rules**: Go to Storage -> Rules and paste the following.
+ *     This is CRUCIAL for allowing uploads and making consent forms viewable by staff.
+ *     ```
+ *     rules_version = '2';
+ *     service firebase.storage {
+ *       match /b/{bucket}/o {
+ *         // Allow public read access to all consent documents
+ *         match /consentDocuments/{allPaths=**} {
+ *           allow read;
+ *           // Only allow authenticated users to upload (write)
+ *           allow write: if request.auth != null;
+ *         }
+ *       }
+ *     }
+ *     ```
  */

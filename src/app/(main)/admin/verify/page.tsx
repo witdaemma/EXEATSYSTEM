@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -8,18 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { getExeatRequestById, formatDate } from '@/lib/mockApi';
-import type { ExeatRequest, ExeatComment } from '@/lib/types';
+import { formatDate } from '@/lib/mockApi';
+import type { ExeatComment } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import Image from 'next/image';
-import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react';
+import { Search, Loader2, FileText, ShieldCheck, ShieldAlert, ShieldQuestion, MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
 
 const verifySchema = z.object({
   exeatId: z.string().min(1, { message: "Exeat ID is required." }),
 });
 
 type VerifyFormValues = z.infer<typeof verifySchema>;
+type ExeatDetails = NonNullable<Awaited<ReturnType<typeof verifyExeat>>>;
+
 
 const CommentCard = ({ comment }: { comment: ExeatComment }) => {
   let icon = <MessageSquare className="h-5 w-5 text-muted-foreground" />;
@@ -45,7 +48,7 @@ const CommentCard = ({ comment }: { comment: ExeatComment }) => {
 
 export default function VerifyExeatPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [exeatDetails, setExeatDetails] = useState<ExeatRequest | null | undefined>(null); // undefined for not found
+  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // undefined for not found
 
   const form = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
@@ -56,7 +59,7 @@ export default function VerifyExeatPage() {
     setIsLoading(true);
     setExeatDetails(null); 
     try {
-      const details = await getExeatRequestById(values.exeatId);
+      const details = await verifyExeat({exeatId: values.exeatId});
       setExeatDetails(details); // Will be undefined if not found
     } catch (error) {
       console.error("Verification error:", error);

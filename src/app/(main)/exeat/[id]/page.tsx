@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getExeatRequestById, formatDate } from '@/lib/mockApi';
 import type { ExeatRequest as ExeatRequestType, ExeatComment } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Printer, User, FileText, CalendarDays, Contact, ShieldCheck, ShieldAlert, MessageSquare, QrCode } from 'lucide-react';
+import { ArrowLeft, Printer, User, FileText, CalendarDays, Contact, ShieldCheck, ShieldAlert, MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/core/Logo';
 import { useAuth } from '@/hooks/useAuth';
@@ -178,29 +178,9 @@ export default function ExeatDetailPage() {
               </div>
             </section>
             
-            {exeat.status === 'Approved' && (
-              <>
-              <Separator />
-              <section className="text-center">
-                <h2 className="text-xl font-headline font-semibold mb-3 border-b pb-2">Verification QR Code</h2>
-                <div className="flex flex-col items-center">
-                   <Image 
-                      src={`https://placehold.co/150x150.png?text=${encodeURIComponent(exeat.id)}`} 
-                      alt="QR Code for Exeat Verification" 
-                      width={150} 
-                      height={150}
-                      data-ai-hint="qr code" 
-                      className="rounded-md shadow-md"
-                    />
-                    <p className="text-sm text-muted-foreground mt-2">Scan to verify or use Exeat ID: {exeat.id}</p>
-                </div>
-              </section>
-              </>
-            )}
-            
             <div className="hidden print:block mt-8 text-xs text-center text-muted-foreground">
               This document is an official Exeat Permit from Mountain Top University. 
-              <br/>Validate at security checkpoints using the Exeat ID or QR Code.
+              <br/>Validate at security checkpoints using the Exeat ID.
               <br />Printed on: {formatDate(new Date())}
             </div>
           </CardContent>
