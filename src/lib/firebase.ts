@@ -7,12 +7,12 @@ import { getStorage } from "firebase/storage";
 
 // TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA6qOlaMBwU2I1YnEJ6L0MZpidpNTT6FWk",
-  authDomain: "mtuexceat-6660d.firebaseapp.com",
-  projectId: "mtuexceat-6660d",
-  storageBucket: "mtuexceat-6660d.appspot.com", // Corrected storage bucket format
-  messagingSenderId: "11331869899",
-  appId: "1:11331869899:web:bc6603fe898733b08a4f4e"
+  apiKey: process.env.NEXT_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_FIREBASE_STORAGE_BUCKET, // Corrected storage bucket format
+  messagingSenderId: process.env.NEXT_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_FIREBASE_APP_ID
 };
 
 
