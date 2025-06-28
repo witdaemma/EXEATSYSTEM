@@ -8,14 +8,15 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/hooks/useAuth';
-import type { ExeatRequest, User, UserRole } from '@/lib/types';
+import type { ExeatRequest, UserRole } from '@/lib/types';
 import { updateExeatRequestStatus } from '@/lib/mockApi';
 import { formatDate } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const approvalSchema = z.object({
   comment: z.string().min(1, { message: "Comment is required, especially for declines/rejections." }).max(300, { message: "Comment is too long (max 300 characters)."}),
@@ -35,6 +36,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<ApprovalFormValues>({
     resolver: zodResolver(approvalSchema),
@@ -42,6 +44,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
   });
   
   const handleAction = async (actionType: 'Approved' | 'Declined' | 'Rejected') => {
+    setErrorMessage(null); // Reset error on new action attempt
     if (!currentUser) {
       toast({ variant: "destructive", title: "Error", description: "User not authenticated." });
       return;
@@ -49,7 +52,6 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
     
     const isValid = await form.trigger();
     if (!isValid) {
-      // If any action type, comment is required by schema.
       return;
     }
 
@@ -57,16 +59,32 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
     const values = form.getValues();
 
     try {
-      // Pass the full currentUser object which includes firebaseUID
       await updateExeatRequestStatus(exeat.id, currentUser, actionType, values.comment);
       toast({ title: "Action Successful", description: `Exeat request ${exeat.id} has been ${actionType.toLowerCase()}.` });
       onActionComplete();
       setIsOpen(false); 
       form.reset();
-    } catch (error) {
-      toast({ variant: "destructive", title: "Action Failed", description: (error as Error).message });
+    } catch (error: any) {
+        let detailedError = "An unexpected error occurred. Please try again.";
+        if (error.code === 'permission-denied' || (error.message && error.message.toLowerCase().includes('permission'))) {
+            detailedError = `Permission Denied: This usually means the staff user '${currentUser.email}' does not have the correct role ('${actorRole}') assigned in the Firestore '/users' collection. Please verify the user's data in your live database.`;
+            toast({ variant: "destructive", title: "Permission Error", description: "See details in the modal." });
+        } else {
+            detailedError = (error as Error).message;
+            toast({ variant: "destructive", title: "Action Failed", description: detailedError });
+        }
+        setErrorMessage(detailedError);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      // Reset state when dialog is closed
+      form.reset();
+      setErrorMessage(null);
     }
   };
 
@@ -82,7 +100,7 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{triggerButton}</DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
@@ -102,6 +120,15 @@ export function ApprovalModal({ exeat, actorRole, onActionComplete, triggerButto
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {errorMessage && (
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Action Failed</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <Form {...form}>
           <form className="space-y-4 py-4">
             <FormField
