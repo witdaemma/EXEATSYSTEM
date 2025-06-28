@@ -1,18 +1,20 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-if (!process.env.GOOGLE_API_KEY) {
-  // This error will be thrown during build time or server startup if the key is missing.
-  // It's a safeguard to ensure the application is configured correctly for deployment.
-  throw new Error(
-    'GOOGLE_API_KEY is not set in the environment variables. Please add it to your .env file or hosting provider configuration.'
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+if (!googleApiKey) {
+  // Log a warning during build/startup instead of throwing a hard error.
+  // This allows the server to start, but AI-dependent calls will fail gracefully within the flows.
+  console.warn(
+    'WARNING: GOOGLE_API_KEY is not set. Genkit-dependent features may not work. Please set this in your .env file or hosting provider configuration.'
   );
 }
 
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: process.env.GOOGLE_API_KEY,
+      apiKey: googleApiKey, // Pass the variable, which might be undefined
     }),
   ],
   model: 'googleai/gemini-2.0-flash',

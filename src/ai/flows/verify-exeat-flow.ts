@@ -11,7 +11,6 @@ import { getExeatRequestById } from '@/lib/mockApi';
 import { z } from 'zod';
 
 // This schema defines the structure of a single comment in the approval trail.
-// It is NOT exported, as it's only used internally by the flow.
 const ExeatCommentSchema = z.object({
   userId: z.string(),
   userName: z.string(),
@@ -21,10 +20,8 @@ const ExeatCommentSchema = z.object({
   action: z.enum(["Approved", "Declined", "Rejected", "Commented", "Submitted"]),
 });
 
-// This schema represents the data structure of an exeat request returned to the client.
-// It must match the `ExeatRequest` type from `lib/types.ts`.
-// It is NOT exported. It's used to validate the output of the Genkit flow.
-const VerifyExeatOutputSchema = z.object({
+// This schema represents the data structure of an exeat request.
+const ExeatRequestDataSchema = z.object({
   id: z.string(),
   studentId: z.string(),
   studentName: z.string(),
@@ -42,27 +39,35 @@ const VerifyExeatOutputSchema = z.object({
   currentStage: z.enum(["student", "porter", "hod", "dsa", "Completed"]),
 }).nullable(); // Use .nullable() to handle cases where an exeat is not found.
 
-// This schema defines the expected input for the verification flow.
-// It is NOT exported.
+
+// A new output schema that can handle success or a specific error message.
+// This allows us to return a meaningful error from the server instead of a generic 500.
+const VerifyExeatOutputSchema = z.object({
+  data: ExeatRequestDataSchema.optional(),
+  error: z.string().optional(),
+});
+export type VerifyExeatOutput = z.infer<typeof VerifyExeatOutputSchema>;
+
+
 const VerifyExeatInputSchema = z.object({
   exeatId: z.string().min(1, { message: "Exeat ID is required." }),
 });
+export type VerifyExeatInput = z.infer<typeof VerifyExeatInputSchema>;
 
 
 /**
  * The main exported function that client components will call.
  * This function acts as a wrapper for the underlying Genkit flow.
  * @param input - An object containing the exeatId to verify.
- * @returns The exeat details if found, otherwise null.
+ * @returns An object with either exeat details or an error message.
  */
 export async function verifyExeat(
-  input: z.infer<typeof VerifyExeatInputSchema>
-): Promise<z.infer<typeof VerifyExeatOutputSchema>> {
+  input: VerifyExeatInput
+): Promise<VerifyExeatOutput> {
   return verifyExeatFlow(input);
 }
 
 // The Genkit flow definition. It is NOT exported.
-// This flow runs on the server and can securely access the database.
 const verifyExeatFlow = ai.defineFlow(
   {
     name: 'verifyExeatFlow',
@@ -70,11 +75,22 @@ const verifyExeatFlow = ai.defineFlow(
     outputSchema: VerifyExeatOutputSchema,
   },
   async (input) => {
-    // Calling the mockApi function, which has direct database access.
-    const exeatDetails = await getExeatRequestById(input.exeatId);
+    // This is the crucial check. We verify the environment variable on the server.
+    // This flow is wrapped by Genkit, which needs the key, even if this specific flow doesn't make an AI call.
+    if (!process.env.GOOGLE_API_KEY) {
+      return { 
+        error: "Server Configuration Error: The GOOGLE_API_KEY is missing on the deployed site. Please add it to your hosting provider's environment variables (e.g., in the Netlify UI) and trigger a new deploy." 
+      };
+    }
     
-    // Return the details, or null if nothing was found.
-    // Genkit will automatically validate this output against VerifyExeatOutputSchema.
-    return exeatDetails || null;
+    try {
+      const exeatDetails = await getExeatRequestById(input.exeatId);
+      // Return the details, or null if nothing was found.
+      return { data: exeatDetails || null };
+    } catch (e) {
+        console.error("Error in verifyExeatFlow fetching from database:", e);
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        return { error: `An unexpected error occurred while fetching the exeat record from the database: ${errorMessage}` };
+    }
   }
 );

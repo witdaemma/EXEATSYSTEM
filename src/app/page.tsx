@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import type { UserRole, ExeatRequest, ExeatComment } from '@/lib/types';
+import type { UserRole, ExeatComment } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -14,10 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { StatusBadge } from '@/components/StatusBadge';
-import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion, FileCheck2 } from 'lucide-react';
+import { Search, Loader2, User, FileText, CalendarDays, MessageSquare, ShieldCheck, ShieldAlert, ShieldQuestion, FileCheck2, Terminal } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Logo } from '@/components/core/Logo';
-import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
+import { verifyExeat, type VerifyExeatOutput } from '@/ai/flows/verify-exeat-flow';
 import { formatDate } from '@/lib/utils';
 
 const verifySchema = z.object({
@@ -25,7 +26,7 @@ const verifySchema = z.object({
 });
 type VerifyFormValues = z.infer<typeof verifySchema>;
 
-type ExeatDetails = NonNullable<Awaited<ReturnType<typeof verifyExeat>>>;
+type ExeatDetails = NonNullable<VerifyExeatOutput['data']>;
 
 const CommentCard = ({ comment }: { comment: ExeatComment }) => {
   let icon = <MessageSquare className="h-5 w-5 text-muted-foreground" />;
@@ -49,7 +50,8 @@ const CommentCard = ({ comment }: { comment: ExeatComment }) => {
 
 function VerificationPortal() {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // null: idle, undefined: not found/error
+  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // null: idle, undefined: not found
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const form = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
@@ -64,13 +66,21 @@ function VerificationPortal() {
     }
 
     setIsVerifying(true);
-    setExeatDetails(null); // Reset to show loading state
+    setExeatDetails(null);
+    setVerificationError(null);
     try {
-      const details = await verifyExeat({ exeatId: trimmedId });
-      // If details are null, it means 'not found'. Set state to 'undefined' to trigger the error message.
-      setExeatDetails(details === null ? undefined : details);
+      const result = await verifyExeat({ exeatId: trimmedId });
+      
+      if (result.error) {
+        setVerificationError(result.error);
+        setExeatDetails(undefined);
+      } else {
+        setExeatDetails(result.data === null ? undefined : result.data);
+      }
+
     } catch (error) {
-      console.error("Verification error:", error);
+      console.error("Verification submission error:", error);
+      setVerificationError("A network error occurred or the server is unavailable. Please check the console and try again.");
       setExeatDetails(undefined); // Indicate error
     } finally {
       setIsVerifying(false);
@@ -121,17 +131,25 @@ function VerificationPortal() {
             </form>
           </Form>
 
-          {exeatDetails === null && !isVerifying && (
+          {verificationError && (
+             <Alert variant="destructive" className="my-4">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Verification Failed</AlertTitle>
+              <AlertDescription>{verificationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {exeatDetails === null && !isVerifying && !verificationError && (
              <div className="text-center py-6 text-muted-foreground">
               <ShieldQuestion className="mx-auto h-12 w-12 mb-2"/>
               Enter an Exeat ID to begin verification.
             </div>
           )}
           
-          {exeatDetails === undefined && !isVerifying && (
+          {exeatDetails === undefined && !isVerifying && !verificationError && (
             <div className="text-center py-6 text-destructive">
               <ShieldAlert className="mx-auto h-12 w-12 mb-2"/>
-              Exeat ID not found or an error occurred.
+              Exeat ID not found. Please double-check the ID and try again.
             </div>
           )}
 

@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { ExeatComment } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Search, Loader2, FileText, ShieldCheck, ShieldAlert, ShieldQuestion, MessageSquare } from 'lucide-react';
+import { Search, Loader2, FileText, ShieldCheck, ShieldAlert, ShieldQuestion, MessageSquare, Terminal } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { verifyExeat } from '@/ai/flows/verify-exeat-flow';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { verifyExeat, type VerifyExeatOutput } from '@/ai/flows/verify-exeat-flow';
 import { formatDate } from '@/lib/utils';
 
 const verifySchema = z.object({
@@ -21,7 +22,7 @@ const verifySchema = z.object({
 });
 
 type VerifyFormValues = z.infer<typeof verifySchema>;
-type ExeatDetails = NonNullable<Awaited<ReturnType<typeof verifyExeat>>>;
+type ExeatDetails = NonNullable<VerifyExeatOutput['data']>;
 
 
 const CommentCard = ({ comment }: { comment: ExeatComment }) => {
@@ -48,7 +49,8 @@ const CommentCard = ({ comment }: { comment: ExeatComment }) => {
 
 export default function VerifyExeatPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // null: idle, undefined: not found/error
+  const [exeatDetails, setExeatDetails] = useState<ExeatDetails | null | undefined>(null); // null: idle, undefined: not found
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const form = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
@@ -63,14 +65,21 @@ export default function VerifyExeatPage() {
     }
 
     setIsLoading(true);
-    setExeatDetails(null); // Reset to show loading state
+    setExeatDetails(null);
+    setVerificationError(null);
     try {
-      const details = await verifyExeat({ exeatId: trimmedId });
-      // If details are null, it means 'not found'. Set state to 'undefined' to trigger the error message.
-      setExeatDetails(details === null ? undefined : details);
+      const result = await verifyExeat({ exeatId: trimmedId });
+      
+      if (result.error) {
+        setVerificationError(result.error);
+        setExeatDetails(undefined);
+      } else {
+        setExeatDetails(result.data === null ? undefined : result.data);
+      }
     } catch (error) {
-      console.error("Verification error:", error);
-      setExeatDetails(undefined); // Indicate error
+      console.error("Verification submission error:", error);
+      setVerificationError("A network error occurred or the server is unavailable. Please check the console and try again.");
+      setExeatDetails(undefined);
     } finally {
       setIsLoading(false);
     }
@@ -106,17 +115,25 @@ export default function VerifyExeatPage() {
             </form>
           </Form>
 
-          {exeatDetails === null && !isLoading && (
+          {verificationError && (
+            <Alert variant="destructive" className="my-4">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Verification Failed</AlertTitle>
+              <AlertDescription>{verificationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {exeatDetails === null && !isLoading && !verificationError && (
              <div className="text-center py-6 text-muted-foreground">
               <ShieldQuestion className="mx-auto h-12 w-12 mb-2"/>
               Enter an Exeat ID to begin verification.
             </div>
           )}
           
-          {exeatDetails === undefined && !isLoading && (
+          {exeatDetails === undefined && !isLoading && !verificationError && (
             <div className="text-center py-6 text-destructive">
               <ShieldAlert className="mx-auto h-12 w-12 mb-2"/>
-              Exeat ID not found or an error occurred.
+              Exeat ID not found. Please double-check the ID and try again.
             </div>
           )}
 
