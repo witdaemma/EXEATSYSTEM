@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from 'next/link';
-import { LogOut, UserCircle, LayoutDashboard, Search, FilePlus, Settings, HelpCircle } from 'lucide-react';
+import { LogOut, UserCircle, LayoutDashboard, Search, FilePlus, Settings, HelpCircle, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -13,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from './Logo';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/lib/types';
@@ -29,11 +29,11 @@ const getRoleBasedLinks = (role: UserRole | undefined) => {
   switch (role) {
     // Student links are handled by StudentSidebar
     case 'porter':
-      return [{ href: '/porter/dashboard', label: 'Porter Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
+      return [{ href: '/porter/dashboard', label: 'Porter Dashboard', icon: LayoutDashboard }];
     case 'hod':
-      return [{ href: '/hod/dashboard', label: 'HOD Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
+      return [{ href: '/hod/dashboard', label: 'HOD Dashboard', icon: LayoutDashboard }];
     case 'dsa':
-      return [{ href: '/dsa/dashboard', label: 'DSA Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> }];
+      return [{ href: '/dsa/dashboard', label: 'DSA Dashboard', icon: LayoutDashboard }];
     // Admin role removed
     default:
       return [];
@@ -49,7 +49,11 @@ export function Header() {
     return null;
   }
 
-  const navLinks = getRoleBasedLinks(currentUser.role);
+  const roleNavLinks = getRoleBasedLinks(currentUser.role);
+  const commonNavLinks = [
+      { href: '/', label: 'Verify Exeat', icon: Search }
+  ];
+  const allNavLinks = [...roleNavLinks, ...commonNavLinks];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm print:hidden">
@@ -57,23 +61,18 @@ export function Header() {
         <div className="flex items-center gap-6">
           <Logo />
           <nav className="hidden md:flex items-center gap-4">
-            {navLinks.map(link => (
+            {allNavLinks.map(link => (
               <Button key={link.href} variant="ghost" asChild>
                 <Link href={link.href} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-                  {link.icon}
+                  <link.icon className="h-4 w-4" />
                   {link.label}
                 </Link>
               </Button>
             ))}
-             <Button variant="ghost" asChild>
-                <Link href="/" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-                  <Search className="h-4 w-4" /> Verify Exeat
-                </Link>
-              </Button>
           </nav>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground hidden sm:inline">
             {currentUser.role.toUpperCase()} Portal
           </span>
@@ -108,6 +107,31 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+           {/* Mobile Menu Trigger */}
+           <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full max-w-xs">
+                <nav className="flex flex-col gap-4 mt-8">
+                  {allNavLinks.map((link) => (
+                    <Button key={link.href} variant="ghost" asChild className="justify-start text-base">
+                      <Link href={link.href}>
+                        <link.icon className="mr-3 h-5 w-5" />
+                        {link.label}
+                      </Link>
+                    </Button>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+
         </div>
       </div>
     </header>

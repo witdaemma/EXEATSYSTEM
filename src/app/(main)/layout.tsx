@@ -1,9 +1,9 @@
-
 "use client";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/core/Header';
 import { StudentSidebar } from '@/components/core/StudentSidebar';
+import { MobileHeader } from '@/components/core/MobileHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -32,17 +32,20 @@ export default function AuthenticatedLayout({
   const isStudent = currentUser.role === 'student';
 
   return (
-    <div className={cn("flex min-h-screen flex-col", isStudent ? "" : "bg-background")}>
+    <div className={cn("flex min-h-screen flex-col bg-background")}>
       {isStudent ? (
-        <div className="flex">
+        <>
           <StudentSidebar />
-          <main className="flex-1 pl-64 bg-background"> {/* Adjust pl value to match sidebar width */}
-            {children}
-             <footer className="py-6 text-center text-sm text-muted-foreground border-t bg-background print:hidden">
+          <div className="flex flex-1 flex-col md:pl-64">
+            <MobileHeader />
+            <main className="flex-1">
+              {children}
+            </main>
+            <footer className="py-6 text-center text-sm text-muted-foreground border-t bg-background print:hidden">
               © {new Date().getFullYear()} MTUEXCEAT - MTU. All rights reserved.
             </footer>
-          </main>
-        </div>
+          </div>
+        </>
       ) : (
         <>
           <Header />

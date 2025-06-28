@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
@@ -106,8 +105,8 @@ export default function StudentDashboardPage() {
                   <TableRow>
                     <TableHead>Request ID</TableHead>
                     <TableHead>Purpose</TableHead>
-                    <TableHead>Departure</TableHead>
-                    <TableHead>Return</TableHead>
+                    <TableHead className="hidden sm:table-cell">Departure</TableHead>
+                    <TableHead className="hidden sm:table-cell">Return</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -116,9 +115,9 @@ export default function StudentDashboardPage() {
                   {exeatRequests.map((exeat) => (
                     <TableRow key={exeat.id}>
                       <TableCell className="font-medium">{exeat.id}</TableCell>
-                       <TableCell className="max-w-[200px] truncate" title={exeat.purpose}>{exeat.purpose}</TableCell>
-                      <TableCell>{formatDate(exeat.departureDate, false)}</TableCell>
-                      <TableCell>{formatDate(exeat.returnDate, false)}</TableCell>
+                       <TableCell className="max-w-[150px] truncate sm:max-w-[200px]" title={exeat.purpose}>{exeat.purpose}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatDate(exeat.departureDate, false)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatDate(exeat.returnDate, false)}</TableCell>
                       <TableCell><StatusBadge status={exeat.status} /></TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>
