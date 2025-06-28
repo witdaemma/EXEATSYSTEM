@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import type { ExeatRequest } from "@/lib/types";
-import { formatDate } from "@/lib/mockApi";
+import { formatDate } from "@/lib/utils";
 import { CalendarDays, ArrowRight, FileText } from "lucide-react";
 
 interface ExeatCardProps {

@@ -1,5 +1,4 @@
 
-import { format } from 'date-fns';
 import {
   getFirestore,
   doc,
@@ -320,21 +319,4 @@ export const updateExeatRequestStatus = async (
   await addDoc(trailCollectionRef, newComment);
   
   return await getExeatRequestById(exeatId);
-};
-
-
-// --- Utility ---
-export const formatDate = (dateString: string | Date, includeTime: boolean = true) => {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) { // Check if date is valid
-      return "Invalid Date";
-    }
-    if (includeTime) {
-      return format(date, "MMM d, yyyy 'at' h:mm a");
-    }
-    return format(date, "yyyy-MM-dd");
-  } catch (e) {
-    return "Invalid Date";
-  }
 };

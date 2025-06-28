@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import type { ExeatRequest, UserRole } from "@/lib/types";
-import { formatDate } from "@/lib/mockApi";
+import { formatDate } from "@/lib/utils";
 import { ApprovalModal } from './ApprovalModal';
 import { Eye, Edit3 } from 'lucide-react';
 
